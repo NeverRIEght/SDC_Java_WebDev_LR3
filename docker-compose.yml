@@ -1,0 +1,30 @@
+name: Name
+services:
+  app:
+    container_name: ${APP_NAME}
+    build: .
+    env_file:
+      - .env
+    ports:
+      - "${APP_EXTERNAL_PORT}:${APP_INTERNAL_PORT}"
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+  postgres:
+    container_name: postgres
+    image: postgres:17.4
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "${DB_EXTERNAL_PORT}:${DB_INTERNAL_PORT}"
+    restart: unless-stopped
+    volumes:
+      - ./database/data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready --username=${DB_USER} --dbname=${DB_NAME}" ]
+      interval: 5s
+      timeout: 40s
+      retries: 10
