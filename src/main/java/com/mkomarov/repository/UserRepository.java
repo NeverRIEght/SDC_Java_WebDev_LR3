@@ -108,6 +108,23 @@ public final class UserRepository extends AbstractRepository<UserEntity> {
         }
     }
 
+    public Optional<UserEntity> findByEmail(String email) {
+        if (email == null) return Optional.empty();
+        String sql = "SELECT id, email, password_hash FROM " + tableName + " WHERE email = ?";
+        try (Connection conn = DatabaseProvider.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, email);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return Optional.of(mapRow(rs));
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to find user by email", e);
+        }
+        return Optional.empty();
+    }
+
     private UserEntity mapRow(ResultSet rs) throws SQLException {
         UserEntity user = new UserEntity();
         user.setId(rs.getLong("id"));
@@ -116,4 +133,3 @@ public final class UserRepository extends AbstractRepository<UserEntity> {
         return user;
     }
 }
-
