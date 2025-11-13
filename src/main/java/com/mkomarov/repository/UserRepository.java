@@ -9,12 +9,12 @@ import java.util.List;
 
 public final class UserRepository extends AbstractRepository<UserEntity> {
 
-    public UserRepository(String tableName, DatabaseProvider dbInstance) {
-        super(tableName, dbInstance);
+    public UserRepository(String tableName) {
+        super(tableName);
     }
 
     @Override
-    protected List<UserEntity> getAll() {
+    public List<UserEntity> getAll() {
         List<UserEntity> result = new ArrayList<>();
         String sql = "SELECT id, email, password_hash FROM " + tableName;
         try (Connection conn = DatabaseProvider.getConnection();
@@ -32,7 +32,7 @@ public final class UserRepository extends AbstractRepository<UserEntity> {
     }
 
     @Override
-    protected UserEntity getById(long id) {
+    public UserEntity getById(long id) {
         String sql = "SELECT id, email, password_hash FROM " + tableName + " WHERE id = ?";
         try (Connection conn = DatabaseProvider.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -49,7 +49,7 @@ public final class UserRepository extends AbstractRepository<UserEntity> {
     }
 
     @Override
-    protected UserEntity create(UserEntity entityToCreate) {
+    public UserEntity create(UserEntity entityToCreate) {
         String sql = "INSERT INTO " + tableName + " (email, password_hash) VALUES (?, ?)";
         try (Connection conn = DatabaseProvider.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -73,7 +73,7 @@ public final class UserRepository extends AbstractRepository<UserEntity> {
     }
 
     @Override
-    protected UserEntity update(long id, UserEntity updatedEntity) {
+    public UserEntity update(long id, UserEntity updatedEntity) {
         String sql = "UPDATE " + tableName + " SET email = ?, password_hash = ? WHERE id = ?";
         try (Connection conn = DatabaseProvider.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -92,7 +92,7 @@ public final class UserRepository extends AbstractRepository<UserEntity> {
     }
 
     @Override
-    protected UserEntity delete(long id) {
+    public UserEntity delete(long id) {
         UserEntity existing = getById(id);
         if (existing == null) return null;
         String sql = "DELETE FROM " + tableName + " WHERE id = ?";

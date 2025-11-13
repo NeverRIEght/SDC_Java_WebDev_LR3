@@ -10,5 +10,5 @@ RUN mvn clean package -DskipTests
 
 # Stage 3: Deploy
 FROM tomcat:11.0.13-jdk25-temurin-noble
-COPY --from=builder /app/target/multiplier.war $CATALINA_HOME/webapps/ROOT.war
+COPY --from=builder /app/target/webapp.war $CATALINA_HOME/webapps/ROOT.war
 EXPOSE 8080

@@ -1,4 +1,4 @@
-name: Name
+name: Webapp
 services:
   app:
     container_name: ${APP_NAME}
@@ -13,7 +13,7 @@ services:
         condition: service_healthy
   postgres:
     container_name: postgres
-    image: postgres:17.4
+    image: postgres:latest
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -22,7 +22,8 @@ services:
       - "${DB_EXTERNAL_PORT}:${DB_INTERNAL_PORT}"
     restart: unless-stopped
     volumes:
-      - ./database/data:/var/lib/postgresql/data
+      - ./database/schema:/docker-entrypoint-initdb.d
+      - ./database/data:/var/lib/postgresql
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready --username=${DB_USER} --dbname=${DB_NAME}" ]
       interval: 5s
