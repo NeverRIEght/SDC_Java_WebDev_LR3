@@ -3,6 +3,7 @@ package com.mkomarov.repository;
 import com.mkomarov.entity.AbstractEntity;
 
 import java.util.List;
+import java.util.Optional;
 
 public abstract class AbstractRepository<T extends AbstractEntity> {
     protected String tableName;
@@ -12,7 +13,7 @@ public abstract class AbstractRepository<T extends AbstractEntity> {
     }
 
     protected abstract List<T> getAll();
-    protected abstract T getById(long id);
+    protected abstract Optional<T> getById(long id);
     protected abstract T create(T entityToCreate);
     protected abstract T update(long id, T updatedEntity);
     protected abstract T delete(long id);

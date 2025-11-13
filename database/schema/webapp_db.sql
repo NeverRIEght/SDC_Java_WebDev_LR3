@@ -1,5 +1,13 @@
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
-    email VARCHAR(100) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL
+);
+
+CREATE TABLE contacts (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT REFERENCES users(id),
+    name TEXT NOT NULL,
+    surname TEXT,
+    phone_number TEXT NOT NULL
 );

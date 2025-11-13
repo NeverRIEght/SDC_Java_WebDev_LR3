@@ -2,8 +2,7 @@ package com.mkomarov.service;
 
 import com.mkomarov.entity.UserEntity;
 import com.mkomarov.repository.UserRepository;
-
-import java.util.Optional;
+import jakarta.servlet.http.HttpServletRequest;
 
 public class UserService {
     private final UserRepository userRepository;
@@ -12,7 +11,11 @@ public class UserService {
         this.userRepository = new UserRepository("users");
     }
 
-    public Optional<UserEntity> getUserById(long id) {
-        return Optional.ofNullable(userRepository.getById(id));
+    public void registerUser(HttpServletRequest req) {
+        UserEntity user = new UserEntity();
+        user.setEmail(req.getAttribute("email").toString());
+        user.setPasswordHash(req.getAttribute("hashedPassword").toString());
+
+        userRepository.create(user);
     }
 }

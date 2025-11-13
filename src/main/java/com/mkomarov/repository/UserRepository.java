@@ -6,6 +6,7 @@ import com.mkomarov.entity.UserEntity;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public final class UserRepository extends AbstractRepository<UserEntity> {
 
@@ -32,20 +33,20 @@ public final class UserRepository extends AbstractRepository<UserEntity> {
     }
 
     @Override
-    public UserEntity getById(long id) {
+    public Optional<UserEntity> getById(long id) {
         String sql = "SELECT id, email, password_hash FROM " + tableName + " WHERE id = ?";
         try (Connection conn = DatabaseProvider.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    return mapRow(rs);
+                    return Optional.of(mapRow(rs));
                 }
             }
         } catch (SQLException e) {
             throw new RuntimeException("Failed to fetch user by id", e);
         }
-        return null;
+        return Optional.empty();
     }
 
     @Override
@@ -93,15 +94,15 @@ public final class UserRepository extends AbstractRepository<UserEntity> {
 
     @Override
     public UserEntity delete(long id) {
-        UserEntity existing = getById(id);
-        if (existing == null) return null;
+        Optional<UserEntity> existing = getById(id);
+        if (existing.isEmpty()) return null;
         String sql = "DELETE FROM " + tableName + " WHERE id = ?";
         try (Connection conn = DatabaseProvider.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, id);
             int affected = ps.executeUpdate();
             if (affected == 0) return null;
-            return existing;
+            return existing.get();
         } catch (SQLException e) {
             throw new RuntimeException("Failed to delete user", e);
         }
