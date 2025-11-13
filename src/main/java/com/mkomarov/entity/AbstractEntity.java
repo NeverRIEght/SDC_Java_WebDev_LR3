@@ -1,4 +1,4 @@
-package entity;
+package com.mkomarov.entity;
 
 public abstract class AbstractEntity {
     private long id;

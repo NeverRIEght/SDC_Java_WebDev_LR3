@@ -1,7 +1,7 @@
 package com.mkomarov.repository;
 
-import db.DatabaseProvider;
-import entity.AbstractEntity;
+import com.mkomarov.db.DatabaseProvider;
+import com.mkomarov.entity.AbstractEntity;
 
 import java.util.List;
 

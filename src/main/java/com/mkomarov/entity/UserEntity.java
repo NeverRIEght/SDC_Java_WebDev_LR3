@@ -1,4 +1,4 @@
-package entity;
+package com.mkomarov.entity;
 
 import java.util.Objects;
 

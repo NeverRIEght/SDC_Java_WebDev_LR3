@@ -1,4 +1,4 @@
-package db;
+package com.mkomarov.db;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
