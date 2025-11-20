@@ -9,9 +9,9 @@ public class UserEntity extends AbstractEntity {
     public UserEntity() {
     }
 
-    public UserEntity(String passwordHash, String email) {
-        this.passwordHash = passwordHash;
+    public UserEntity(String email, String passwordHash) {
         this.email = email;
+        this.passwordHash = passwordHash;
     }
 
     public String getEmail() {

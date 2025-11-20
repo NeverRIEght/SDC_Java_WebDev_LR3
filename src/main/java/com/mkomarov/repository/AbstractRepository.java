@@ -15,6 +15,6 @@ public abstract class AbstractRepository<T extends AbstractEntity> {
     protected abstract List<T> getAll();
     protected abstract Optional<T> getById(long id);
     protected abstract T create(T entityToCreate);
-    protected abstract T update(long id, T updatedEntity);
+    protected abstract T update(T updatedEntity);
     protected abstract T delete(long id);
 }

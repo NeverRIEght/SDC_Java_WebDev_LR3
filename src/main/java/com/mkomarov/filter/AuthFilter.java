@@ -1,5 +1,6 @@
 package com.mkomarov.filter;
 
+import com.mkomarov.auth.AuthUtils;
 import com.mkomarov.entity.UserEntity;
 import com.mkomarov.repository.UserRepository;
 import com.mkomarov.service.PasswordService;
@@ -14,10 +15,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Optional;
 
+import static com.mkomarov.auth.AuthUtils.USER_EMAIL_ATTRIBUTE;
+
 @WebFilter("/api/*")
 public class AuthFilter implements Filter {
-    private static final String USER_EMAIL_ATTR = "userEmail";
-
     @Override
     public void init(FilterConfig filterConfig) {
     }
@@ -29,13 +30,9 @@ public class AuthFilter implements Filter {
         HttpServletResponse resp = (HttpServletResponse) response;
 
         String path = req.getRequestURI();
-        String ctx = req.getContextPath();
-        if (ctx != null && !ctx.isEmpty() && path.startsWith(ctx)) {
-            path = path.substring(ctx.length());
-        }
 
         // Allow only public API endpoints (register/login)
-        if (isPublicPath(path)) {
+        if (AuthUtils.isPublicPath(path)) {
             chain.doFilter(request, response);
             return;
         }
@@ -44,13 +41,15 @@ public class AuthFilter implements Filter {
         // 1) If user is already authenticated in session, set attribute and continue
         HttpSession session = req.getSession(false);
         if (session != null) {
-            Object emailObj = session.getAttribute(USER_EMAIL_ATTR);
+            Object emailObj = session.getAttribute(USER_EMAIL_ATTRIBUTE);
             if (emailObj instanceof String emailStr) {
-                req.setAttribute(USER_EMAIL_ATTR, emailStr);
+                req.setAttribute(USER_EMAIL_ATTRIBUTE, emailStr);
                 chain.doFilter(request, response);
                 return;
             }
         }
+
+        // TODO: JSessionID???
 
         // 2) Try HTTP Basic auth header (Authorization: Basic base64(email:password))
         String auth = req.getHeader("Authorization");
@@ -70,10 +69,9 @@ public class AuthFilter implements Filter {
                         UserEntity user = userOpt.get();
                         String hashedProvided = PasswordService.hashPassword(password);
                         if (hashedProvided.equals(user.getPasswordHash())) {
-                            // Auth successful: set session attribute and request attribute
                             HttpSession s = req.getSession(true);
-                            s.setAttribute(USER_EMAIL_ATTR, email);
-                            req.setAttribute(USER_EMAIL_ATTR, email);
+                            s.setAttribute(USER_EMAIL_ATTRIBUTE, email);
+                            req.setAttribute(USER_EMAIL_ATTRIBUTE, email);
                             chain.doFilter(request, response);
                             return;
                         }
@@ -84,16 +82,8 @@ public class AuthFilter implements Filter {
             }
         }
 
-        // If we reach here, authentication failed -> respond 401
         resp.setHeader("WWW-Authenticate", "Basic realm=\"Restricted\"");
         resp.sendError(HttpServletResponse.SC_UNAUTHORIZED);
-    }
-
-    private boolean isPublicPath(String path) {
-        if (path == null || path.isEmpty()) return false;
-        String lower = path.toLowerCase();
-        // Allow exact register/login API endpoints (and their subpaths if any)
-        return lower.equals("/api/register");
     }
 
     @Override

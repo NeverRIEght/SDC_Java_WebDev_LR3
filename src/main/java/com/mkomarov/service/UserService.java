@@ -4,6 +4,8 @@ import com.mkomarov.entity.UserEntity;
 import com.mkomarov.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 
+import java.util.Optional;
+
 public class UserService {
     private final UserRepository userRepository;
 
@@ -17,5 +19,9 @@ public class UserService {
         user.setPasswordHash(req.getAttribute("hashedPassword").toString());
 
         userRepository.create(user);
+    }
+
+    public Optional<UserEntity> getUserByEmail(String email) {
+        return userRepository.findByEmail(email);
     }
 }

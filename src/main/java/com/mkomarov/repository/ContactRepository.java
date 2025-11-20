@@ -32,6 +32,24 @@ public final class ContactRepository extends AbstractRepository<ContactEntity> {
         return result;
     }
 
+    public List<ContactEntity> getAllByOwnerId(Long ownerId) {
+        List<ContactEntity> result = new ArrayList<>();
+        String sql = "SELECT id, name, surname, phone_number FROM " + tableName + " WHERE user_id = ?";
+        try (Connection conn = DatabaseProvider.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            ps.setLong(1, ownerId);
+
+            while (rs.next()) {
+                ContactEntity contact = mapRow(rs);
+                result.add(contact);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to fetch all contacts", e);
+        }
+        return result;
+    }
+
     @Override
     public Optional<ContactEntity> getById(long id) {
         String sql = "SELECT id, name, surname, phone_number FROM " + tableName + " WHERE id = ?";
@@ -75,19 +93,18 @@ public final class ContactRepository extends AbstractRepository<ContactEntity> {
     }
 
     @Override
-    public ContactEntity update(long id, ContactEntity updatedEntity) {
+    public ContactEntity update(ContactEntity updatedEntity) {
         String sql = "UPDATE " + tableName + " SET name = ?, surname = ?, phone_number = ? WHERE id = ?";
         try (Connection conn = DatabaseProvider.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, updatedEntity.getName());
             ps.setString(2, updatedEntity.getSurname());
             ps.setString(3, updatedEntity.getPhoneNumber());
-            ps.setLong(4, id);
+            ps.setLong(4, updatedEntity.getId());
             int affected = ps.executeUpdate();
             if (affected == 0) {
                 throw new RuntimeException("Updating contact failed, no rows affected.");
             }
-            updatedEntity.setId(id);
             return updatedEntity;
         } catch (SQLException e) {
             throw new RuntimeException("Failed to update contact", e);

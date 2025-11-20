@@ -74,18 +74,17 @@ public final class UserRepository extends AbstractRepository<UserEntity> {
     }
 
     @Override
-    public UserEntity update(long id, UserEntity updatedEntity) {
+    public UserEntity update(UserEntity updatedEntity) {
         String sql = "UPDATE " + tableName + " SET email = ?, password_hash = ? WHERE id = ?";
         try (Connection conn = DatabaseProvider.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, updatedEntity.getEmail());
             ps.setString(2, updatedEntity.getPasswordHash());
-            ps.setLong(3, id);
+            ps.setLong(3, updatedEntity.getId());
             int affected = ps.executeUpdate();
             if (affected == 0) {
                 throw new RuntimeException("Updating user failed, no rows affected.");
             }
-            updatedEntity.setId(id);
             return updatedEntity;
         } catch (SQLException e) {
             throw new RuntimeException("Failed to update user", e);
