@@ -3,6 +3,7 @@ package com.mkomarov.controller;
 import com.mkomarov.entity.UserEntity;
 import com.mkomarov.service.PasswordService;
 import com.mkomarov.service.UserService;
+import com.mkomarov.utils.PagesConstants;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -67,14 +68,9 @@ public class RegisterController extends HttpServlet {
         req.setAttribute("hashedPassword", hashedPassword);
 
         userService.registerUser(req);
-
-        log.info("User registered with email: {}", email);
-
+        
         resp.setStatus(HttpServletResponse.SC_OK);
-        redirectToLogin(resp);
-    }
-
-    private void redirectToLogin(HttpServletResponse resp) throws IOException {
-        resp.sendRedirect("/login.jsp");
+        resp.sendRedirect(PagesConstants.LOGIN_PAGE);
+        log.info("User registered with email: {}", email);
     }
 }

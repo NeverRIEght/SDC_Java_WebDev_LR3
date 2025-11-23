@@ -1,9 +1,10 @@
 package com.mkomarov.controller;
 
-import com.mkomarov.auth.AuthUtils;
+import com.mkomarov.utils.AuthUtils;
 import com.mkomarov.entity.UserEntity;
 import com.mkomarov.service.PasswordService;
 import com.mkomarov.service.UserService;
+import com.mkomarov.utils.PagesConstants;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -57,11 +58,7 @@ public class LoginController extends HttpServlet {
         HttpSession session = req.getSession(true);
         session.setAttribute(AuthUtils.USER_EMAIL_ATTRIBUTE, email);
         resp.setStatus(HttpServletResponse.SC_OK);
-        redirectToLogin(resp);
+        resp.sendRedirect(PagesConstants.LOGIN_PAGE);
         log.info("User logged in with email: {}", email);
-    }
-
-    private void redirectToLogin(HttpServletResponse resp) throws IOException {
-        resp.sendRedirect("/login.jsp");
     }
 }

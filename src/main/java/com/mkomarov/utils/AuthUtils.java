@@ -1,4 +1,4 @@
-package com.mkomarov.auth;
+package com.mkomarov.utils;
 
 import java.util.List;
 

@@ -1,6 +1,6 @@
 package com.mkomarov.filter;
 
-import com.mkomarov.auth.AuthUtils;
+import com.mkomarov.utils.AuthUtils;
 import com.mkomarov.entity.UserEntity;
 import com.mkomarov.repository.UserRepository;
 import com.mkomarov.service.PasswordService;
@@ -15,7 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Optional;
 
-import static com.mkomarov.auth.AuthUtils.USER_EMAIL_ATTRIBUTE;
+import static com.mkomarov.utils.AuthUtils.USER_EMAIL_ATTRIBUTE;
 
 @WebFilter("/api/*")
 public class AuthFilter implements Filter {

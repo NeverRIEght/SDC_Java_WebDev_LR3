@@ -1,10 +1,9 @@
 package com.mkomarov.controller;
 
-import com.mkomarov.auth.AuthUtils;
+import com.mkomarov.utils.AuthUtils;
 import com.mkomarov.dto.ContactDto;
 import com.mkomarov.entity.ContactEntity;
 import com.mkomarov.service.ContactService;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
