@@ -159,25 +159,27 @@
     </div>
     <h2>Contacts List</h2>
     <div id="contactList" class="contact-list">
-        <!-- Contacts will be loaded here dynamically -->
     </div>
 </div>
 
 <script>
-    let contacts = [];
-
     document.addEventListener('DOMContentLoaded', async function () {
-        try {
-            contacts = await loadContactsList();
-            renderContacts(contacts)
-            console.log("Contacts initialized.")
-        } catch (error) {
-            console.error("Error initializing contacts:", error.message);
-            showError("Error initializing contacts:")
-        }
+        await updateContacts();
+        document.getElementById('addContactForm').addEventListener('submit', addContact);
     });
 
-    async function loadContactsList() {
+    async function updateContacts() {
+        try {
+            const contacts = await getAllContacts();
+            renderContacts(contacts)
+            console.log("Contacts updated.")
+        } catch (error) {
+            console.error("Error updating contacts:", error.message);
+            showError("Error updating contacts" + error.message)
+        }
+    }
+
+    async function getAllContacts() {
         const url = "/api/contacts";
         try {
             const response = await fetch(url, {
@@ -188,12 +190,12 @@
             });
 
             if (!response.ok) {
-                let errorDetails = `HTTP error! Status: ${response.status}`;
+                let errorDetails = 'HTTP error! Status: ' + response.status;
 
                 try {
                     const errorBody = await response.text();
                     if (errorBody) {
-                        errorDetails += `, Response Body: ${errorBody.substring(0, 150)}...`;
+                        errorDetails += ', Response Body: ' + errorBody.substring(0, 150) + '...';
                     }
                 } catch (e) {
                 }
@@ -281,12 +283,137 @@
         });
     }
 
-    function updateContact(id) {
-        console.log("update called");
+    async function updateContact(id) {
+        const contactElement = document.getElementById(id);
+        if (!contactElement) {
+            showError('Contact element with ID' + id + ' not found.');
+            return;
+        }
+
+        const name = contactElement.querySelector('.name-field').textContent.trim();
+        const surname = contactElement.querySelector('.surname-field').textContent.trim();
+        const phoneNumber = contactElement.querySelector('.phone-field').textContent.trim();
+
+        if (!name || !phoneNumber) {
+            showError("Name and Phone Number are required fields.");
+            return;
+        }
+
+        const formData = new URLSearchParams();
+        formData.append('name', name);
+        formData.append('surname', surname);
+        formData.append('phoneNumber', phoneNumber);
+
+        const url = '/api/contacts/' + id;
+
+        try {
+            const response = await fetch(url, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: formData.toString()
+            });
+
+            if (!response.ok) {
+                const errorBody = await response.text();
+                let errorDetails = 'Update failed! Status:' + response.status + '. Body: ' + errorBody.substring(0, 150) + '...';
+                console.error("Update error:", errorDetails);
+                showError("Failed to update contact. See console for details.");
+                return;
+            }
+
+            console.log('Contact ID ' + id + ' updated successfully.');
+        } catch (error) {
+            console.error("Network error during update:", error);
+            showError("A network error occurred while updating the contact.");
+        }
     }
 
-    function deleteContact(id) {
-        console.log("delete called");
+    async function deleteContact(id) {
+        const contactElement = document.getElementById(id);
+        if (!contactElement) {
+            showError('Contact element with ID' + id + ' not found.');
+            return;
+        }
+
+        const url = '/api/contacts/' + id;
+
+        try {
+            const response = await fetch(url, {
+                method: 'DELETE'
+            });
+
+            if (!response.ok) {
+                const errorBody = await response.text();
+                let errorDetails = 'Delete failed! Status:' + response.status + '. Body: ' + errorBody.substring(0, 150) + '...';
+                console.error("Delete error:", errorDetails);
+                showError("Failed to delete contact. See console for details.");
+                return;
+            }
+
+            console.log('Contact ID ' + id + ' deleted successfully.');
+        } catch (error) {
+            console.error("Network error during delete:", error);
+            showError("A network error occurred while deleting the contact.");
+            return;
+        }
+
+        contactElement.remove();
+    }
+
+    async function addContact(event) {
+        event.preventDefault();
+
+        const nameElement = document.getElementById('name');
+        const surnameElement = document.getElementById('surname');
+        const phoneElement = document.getElementById('phoneNumber');
+
+        const name = nameElement.value.trim();
+        const surname = surnameElement.value.trim();
+        const phoneNumber = phoneElement.value.trim();
+
+        if (!name || !phoneNumber) {
+            showError("Name and Phone Number are required.");
+            return;
+        }
+
+        const formData = new URLSearchParams();
+        formData.append('name', name);
+        formData.append('surname', surname);
+        formData.append('phoneNumber', phoneNumber);
+
+        const url = "/api/contacts";
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: formData.toString()
+            });
+
+            document.getElementById('formError').classList.add('hidden');
+
+            if (!response.ok) {
+                const errorBody = await response.text();
+                let errorDetails = 'Add failed! Status:' + response.status + '. Body: ' + errorBody.substring(0, 150) + '...';
+                console.error("Add contact error:", errorDetails);
+                showError('Failed to add contact:' + response.status);
+                return;
+            }
+
+            console.log("Contact added successfully.");
+            nameElement.value = '';
+            surnameElement.value = '';
+            phoneElement.value = '';
+
+            await updateContacts();
+        } catch (error) {
+            console.error("Network error during add contact:", error);
+            showError("A network error occurred while adding the contact.");
+        }
     }
 
     function showError(message) {

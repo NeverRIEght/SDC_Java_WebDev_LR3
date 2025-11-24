@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 
@@ -118,21 +119,44 @@ public class ContactController extends HttpServlet {
 
     @Override
     protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        log.info("Received PUT request: /api/contacts");
+        String pathInfo = req.getPathInfo();
+        log.info("Received PUT request: /api/contacts/*. PathInfo: {}", pathInfo);
 
-        long id;
-        try {
-            id = Long.parseLong(req.getParameter("id"));
-        } catch (NumberFormatException e) {
-            log.error("Invalid id format: {}", req.getParameter("id"));
+        if (pathInfo == null || pathInfo.equals("/")) {
             resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            resp.getWriter().write("{\"error\": \"Invalid id format\"}");
+            resp.getWriter().write("{\"error\": \"Missing contact ID in URL\"}");
             return;
         }
 
-        String name = req.getParameter("name");
-        String surname = req.getParameter("surname");
-        String phoneNumber = req.getParameter("phoneNumber");
+        String idStr = pathInfo.replaceAll("/", "");
+        long id;
+        try {
+            id = Long.parseLong(idStr);
+        } catch (NumberFormatException e) {
+            log.error("Invalid id format in URL: {}", idStr);
+            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            resp.getWriter().write("{\"error\": \"Invalid id format in URL\"}");
+            return;
+        }
+
+        String requestBody = req.getReader().lines()
+                .reduce("", (accumulator, actual) -> accumulator + actual);
+
+        String name = null;
+        String surname = null;
+        String phoneNumber = null;
+
+        for (String pair : requestBody.split("&")) {
+            String[] parts = pair.split("=");
+            if (parts.length == 2) {
+                String key = java.net.URLDecoder.decode(parts[0], StandardCharsets.UTF_8);
+                String value = java.net.URLDecoder.decode(parts[1], StandardCharsets.UTF_8);
+
+                if ("name".equals(key)) name = value;
+                else if ("surname".equals(key)) surname = value;
+                else if ("phoneNumber".equals(key)) phoneNumber = value;
+            }
+        }
 
         String ownerEmail = (String) req.getAttribute(AuthUtils.USER_EMAIL_ATTRIBUTE);
 
@@ -160,15 +184,23 @@ public class ContactController extends HttpServlet {
 
     @Override
     protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        log.info("Received DELETE request: /api/contacts");
+        String pathInfo = req.getPathInfo();
+        log.info("Received DELETE request: /api/contacts/*. PathInfo: {}", pathInfo);
 
+        if (pathInfo == null || pathInfo.equals("/")) {
+            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            resp.getWriter().write("{\"error\": \"Missing contact ID in URL\"}");
+            return;
+        }
+
+        String idStr = pathInfo.replaceAll("/", "");
         long id;
         try {
-            id = Long.parseLong(req.getParameter("id"));
+            id = Long.parseLong(idStr);
         } catch (NumberFormatException e) {
-            log.error("Invalid id format: {}", req.getParameter("id"));
+            log.error("Invalid id format in URL: {}", idStr);
             resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            resp.getWriter().write("{\"error\": \"Invalid id format\"}");
+            resp.getWriter().write("{\"error\": \"Invalid id format in URL\"}");
             return;
         }
 
