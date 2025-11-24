@@ -126,9 +126,6 @@
             margin-top: 5px;
         }
 
-        .hidden {
-            display: none;
-        }
     </style>
 </head>
 <body>
@@ -155,7 +152,6 @@
 
             <button type="submit">Add Contact</button>
         </form>
-        <div id="formError" class="error hidden"></div>
     </div>
     <h2>Contacts List</h2>
     <div id="contactList" class="contact-list">
@@ -190,17 +186,17 @@
             });
 
             if (!response.ok) {
-                let errorDetails = 'HTTP error! Status: ' + response.status;
+                let errorDetails = 'GET error! Status: ' + response.status;
 
                 try {
                     const errorBody = await response.text();
                     if (errorBody) {
-                        errorDetails += ', Response Body: ' + errorBody.substring(0, 150) + '...';
+                        errorDetails += ', Response Body: ' + errorBody;
                     }
                 } catch (e) {
                 }
 
-                console.error("Failed to fetch contacts list:", errorDetails);
+                showError("Failed to fetch contacts list: ", errorDetails);
                 throw new Error(errorDetails);
             }
 
@@ -290,9 +286,13 @@
             return;
         }
 
-        const name = contactElement.querySelector('.name-field').textContent.trim();
-        const surname = contactElement.querySelector('.surname-field').textContent.trim();
-        const phoneNumber = contactElement.querySelector('.phone-field').textContent.trim();
+        const nameElement = contactElement.querySelector('.name-field');
+        const surnameElement = contactElement.querySelector('.surname-field');
+        const phoneElement = contactElement.querySelector('.phone-field');
+
+        const name = nameElement.textContent.trim();
+        const surname = surnameElement.textContent.trim();
+        const phoneNumber = phoneElement.textContent.trim();
 
         if (!name || !phoneNumber) {
             showError("Name and Phone Number are required fields.");
@@ -317,9 +317,9 @@
 
             if (!response.ok) {
                 const errorBody = await response.text();
-                let errorDetails = 'Update failed! Status:' + response.status + '. Body: ' + errorBody.substring(0, 150) + '...';
+                let errorDetails = 'Update failed! Status:' + response.status + '. Body: ' + errorBody;
                 console.error("Update error:", errorDetails);
-                showError("Failed to update contact. See console for details.");
+                showError(errorDetails);
                 return;
             }
 
@@ -346,9 +346,9 @@
 
             if (!response.ok) {
                 const errorBody = await response.text();
-                let errorDetails = 'Delete failed! Status:' + response.status + '. Body: ' + errorBody.substring(0, 150) + '...';
+                let errorDetails = 'Delete failed! Status:' + response.status + '. Body: ' + errorBody;
                 console.error("Delete error:", errorDetails);
-                showError("Failed to delete contact. See console for details.");
+                showError(errorDetails);
                 return;
             }
 
@@ -394,22 +394,22 @@
                 body: formData.toString()
             });
 
-            document.getElementById('formError').classList.add('hidden');
-
             if (!response.ok) {
                 const errorBody = await response.text();
-                let errorDetails = 'Add failed! Status:' + response.status + '. Body: ' + errorBody.substring(0, 150) + '...';
+                let errorDetails = 'Add failed! Status:' + response.status + '. Body: ' + errorBody;
                 console.error("Add contact error:", errorDetails);
-                showError('Failed to add contact:' + response.status);
+                showError(errorDetails);
                 return;
             }
 
             console.log("Contact added successfully.");
+
+            const updatedContactsList = await response.json();
+            renderContacts(updatedContactsList);
+
             nameElement.value = '';
             surnameElement.value = '';
             phoneElement.value = '';
-
-            await updateContacts();
         } catch (error) {
             console.error("Network error during add contact:", error);
             showError("A network error occurred while adding the contact.");

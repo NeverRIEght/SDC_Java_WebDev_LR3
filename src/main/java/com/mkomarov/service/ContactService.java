@@ -88,6 +88,9 @@ public class ContactService {
         if (phoneNumber == null || phoneNumber.isBlank()) {
             throw new IllegalArgumentException("Contact phone number cannot be null or empty.");
         }
+        if (!phoneNumber.matches("\\+?[0-9\\- ]+")) {
+            throw new IllegalArgumentException("Contact phone number format is invalid.");
+        }
     }
 
     public List<ContactEntity> getAllContacts(String userEmail) {
