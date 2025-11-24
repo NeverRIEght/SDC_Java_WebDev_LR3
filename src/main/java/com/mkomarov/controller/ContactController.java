@@ -43,13 +43,10 @@ public class ContactController extends HttpServlet {
         String ownerEmail = (String) req.getAttribute(AuthUtils.USER_EMAIL_ATTRIBUTE);
 
         List<ContactEntity> contacts = contactService.getAllContacts(ownerEmail);
-        StringBuilder response = new StringBuilder();
-        contacts.forEach(contact -> {
-            contact.setOwner(null);
-            String contactJson = jsonToObjectMapper.writeValueAsString(contact);
-            response.append(contactJson).append("\n");
-        });
-        resp.getWriter().write(response.toString());
+        contacts.forEach(contact -> contact.getOwner().setPasswordHash(null));
+        String responseJson = jsonToObjectMapper.writeValueAsString(contacts);
+        resp.setContentType("application/json");
+        resp.getWriter().write(responseJson);
         resp.setStatus(HttpServletResponse.SC_OK);
     }
 
@@ -102,16 +99,10 @@ public class ContactController extends HttpServlet {
             contactService.createContact(contactDto);
 
             List<ContactEntity> contacts = contactService.getAllContacts(ownerEmail);
-
-            StringBuilder response = new StringBuilder();
-
-            contacts.forEach(contact -> {
-                contact.getOwner().setPasswordHash(null);
-                String contactJson = jsonToObjectMapper.writeValueAsString(contact);
-                response.append(contactJson).append("\n");
-            });
-
-            resp.getWriter().write(response.toString());
+            contacts.forEach(contact -> contact.getOwner().setPasswordHash(null));
+            String responseJson = jsonToObjectMapper.writeValueAsString(contacts);
+            resp.setContentType("application/json");
+            resp.getWriter().write(responseJson);
 
             resp.setStatus(HttpServletResponse.SC_CREATED);
         } catch (IllegalArgumentException e) {

@@ -164,7 +164,6 @@
 </div>
 
 <script>
-    // Global variable to store all contacts
     let contacts = [];
 
     document.addEventListener('DOMContentLoaded', function () {
@@ -175,6 +174,36 @@
             addContact();
         });
     });
+
+    async function loadContactsList(username, password) {
+        const credentials = btoa(`${username}:${password}`);
+        const url = "/api/contacts";
+
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Basic ${credentials}`,
+                'Accept': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            let errorDetails = `HTTP error! Status: ${response.status}`;
+
+            try {
+                const errorBody = await response.text();
+                if (errorBody) {
+                    errorDetails += `, Response Body: ${errorBody.substring(0, 150)}...`;
+                }
+            } catch (e) {
+            }
+
+            console.error("Failed to fetch contacts list:", errorDetails);
+            return;
+        }
+
+        return await response.json();
+    }
 
     function loadContacts() {
         fetch('/api/contacts/')
