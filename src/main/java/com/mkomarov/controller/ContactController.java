@@ -106,7 +106,7 @@ public class ContactController extends HttpServlet {
             StringBuilder response = new StringBuilder();
 
             contacts.forEach(contact -> {
-                contact.setOwner(null);
+                contact.getOwner().setPasswordHash(null);
                 String contactJson = jsonToObjectMapper.writeValueAsString(contact);
                 response.append(contactJson).append("\n");
             });

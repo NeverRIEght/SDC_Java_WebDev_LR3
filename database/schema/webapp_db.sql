@@ -6,8 +6,9 @@ CREATE TABLE users (
 
 CREATE TABLE contacts (
     id SERIAL PRIMARY KEY,
-    user_id BIGINT REFERENCES users(id),
+    user_id BIGINT NOT NULL REFERENCES users(id),
     name TEXT NOT NULL,
     surname TEXT,
-    phone_number TEXT NOT NULL
+    phone_number TEXT NOT NULL,
+    UNIQUE(user_id, phone_number)
 );

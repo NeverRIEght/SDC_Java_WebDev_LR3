@@ -4,11 +4,15 @@ import com.mkomarov.dto.ContactDto;
 import com.mkomarov.entity.ContactEntity;
 import com.mkomarov.entity.UserEntity;
 import com.mkomarov.repository.ContactRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Optional;
 
 public class ContactService {
+    private static final Logger log = LoggerFactory.getLogger(ContactService.class);
+
     private final ContactRepository contactRepository;
     private final UserService userService;
 
@@ -21,7 +25,7 @@ public class ContactService {
         return contactRepository.getById(id);
     }
 
-    public void createContact (ContactDto request) {
+    public void createContact(ContactDto request) {
         Optional<UserEntity> owner = userService.getUserByEmail(request.getOwnerEmail());
 
         if (owner.isEmpty()) {
