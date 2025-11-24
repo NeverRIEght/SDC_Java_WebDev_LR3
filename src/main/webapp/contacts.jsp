@@ -137,7 +137,7 @@
     <h2>Add new Contact</h2>
     <div class="form-container">
         <h2>Add New Contact</h2>
-        <form id="contactForm">
+        <form id="addContactForm">
             <div class="form-group">
                 <label for="name">Name *</label>
                 <input type="text" id="name" name="name" required>
@@ -166,219 +166,131 @@
 <script>
     let contacts = [];
 
-    document.addEventListener('DOMContentLoaded', function () {
-        loadContacts();
-
-        document.getElementById('contactForm').addEventListener('submit', function (e) {
-            e.preventDefault();
-            addContact();
-        });
+    document.addEventListener('DOMContentLoaded', async function () {
+        try {
+            contacts = await loadContactsList();
+            renderContacts(contacts)
+            console.log("Contacts initialized.")
+        } catch (error) {
+            console.error("Error initializing contacts:", error.message);
+            showError("Error initializing contacts:")
+        }
     });
 
-    async function loadContactsList(username, password) {
-        const credentials = btoa(`${username}:${password}`);
+    async function loadContactsList() {
         const url = "/api/contacts";
-
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Basic ${credentials}`,
-                'Accept': 'application/json'
-            }
-        });
-
-        if (!response.ok) {
-            let errorDetails = `HTTP error! Status: ${response.status}`;
-
-            try {
-                const errorBody = await response.text();
-                if (errorBody) {
-                    errorDetails += `, Response Body: ${errorBody.substring(0, 150)}...`;
+        try {
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
                 }
-            } catch (e) {
-            }
-
-            console.error("Failed to fetch contacts list:", errorDetails);
-            return;
-        }
-
-        return await response.json();
-    }
-
-    function loadContacts() {
-        fetch('/api/contacts/')
-            .then(response => {
-                if (response.ok) {
-                    return response.text();
-                } else {
-                    throw new Error('Failed to load contacts');
-                }
-            })
-            .then(data => {
-                // Parse the response which contains one JSON object per line
-                const lines = data.trim().split('\n').filter(line => line);
-                contacts = lines.map(line => JSON.parse(line));
-
-                renderContacts();
-            })
-            .catch(error => {
-                console.error('Error loading contacts:', error);
-                alert('Error loading contacts: ' + error.message);
             });
+
+            if (!response.ok) {
+                let errorDetails = `HTTP error! Status: ${response.status}`;
+
+                try {
+                    const errorBody = await response.text();
+                    if (errorBody) {
+                        errorDetails += `, Response Body: ${errorBody.substring(0, 150)}...`;
+                    }
+                } catch (e) {
+                }
+
+                console.error("Failed to fetch contacts list:", errorDetails);
+                throw new Error(errorDetails);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error("Critical network or parsing error:", error.message);
+            throw error;
+        }
     }
 
-    // Render contacts to the page
-    function renderContacts() {
+    function renderContacts(contactEntities) {
         const contactListElement = document.getElementById('contactList');
 
-        if (contacts.length === 0) {
+        if (contactEntities.length === 0) {
             contactListElement.innerHTML = '<p>No contacts found.</p>';
             return;
         }
 
         contactListElement.innerHTML = '';
 
-        contacts.forEach(contact => {
+        console.log(contactEntities)
+
+        contactEntities.forEach(contact => {
+            console.log("Name:", contact.name, "Surname:", contact.surname, "Phone:", contact.phoneNumber);
+
+            console.log("Keys:", Object.keys(contact));
+            console.log("Entry example:", contact);
+
+            const id = contact.id;
+            const name = contact.name;
+            const surname = contact.surname;
+            const phoneNumber = contact.phoneNumber;
+
+
             const contactElement = document.createElement('div');
             contactElement.className = 'contact-item';
-            contactElement.dataset.id = contact.id;
+            contactElement.id = id;
 
-            contactElement.innerHTML = `
-                    <div class="contact-info">
-                        <div class="name-field" contenteditable="true">${contact.name || ''}</div>
-                        <div class="surname-field" contenteditable="true">${contact.surname || ''}</div>
-                        <div class="phone-field" contenteditable="true">${contact.phoneNumber || ''}</div>
-                    </div>
-                    <div class="contact-actions">
-                        <button class="save-btn" onclick="saveContact(${contact.id})">Save</button>
-                        <button class="delete-btn" onclick="deleteContact(${contact.id})">Delete</button>
-                    </div>
-                `;
+            const nameDiv = document.createElement("div");
+            nameDiv.className = "name-field";
+            nameDiv.contentEditable = "true";
+            nameDiv.textContent = name;
+
+            const surnameDiv = document.createElement("div");
+            surnameDiv.className = "surname-field";
+            surnameDiv.contentEditable = "true";
+            surnameDiv.textContent = surname;
+
+            const phoneDiv = document.createElement("div");
+            phoneDiv.className = "phone-field";
+            phoneDiv.contentEditable = "true";
+            phoneDiv.textContent = phoneNumber;
+
+            const info = document.createElement("div");
+            info.className = "contact-info";
+            info.appendChild(nameDiv);
+            info.appendChild(surnameDiv);
+            info.appendChild(phoneDiv);
+
+            const actions = document.createElement("div");
+            actions.className = "contact-actions";
+
+            const updateBtn = document.createElement("button");
+            updateBtn.className = "save-btn";
+            updateBtn.textContent = "Update";
+            updateBtn.addEventListener("click", () => updateContact(id));
+
+            const deleteBtn = document.createElement("button");
+            deleteBtn.className = "delete-btn";
+            deleteBtn.textContent = "Delete";
+            deleteBtn.addEventListener("click", () => deleteContact(id));
+
+            actions.appendChild(updateBtn);
+            actions.appendChild(deleteBtn);
+
+            contactElement.appendChild(info);
+            contactElement.appendChild(actions);
 
             contactListElement.appendChild(contactElement);
         });
     }
 
-    // Add a new contact
-    function addContact() {
-        const name = document.getElementById('name').value.trim();
-        const surname = document.getElementById('surname').value.trim();
-        const phoneNumber = document.getElementById('phoneNumber').value.trim();
-
-        // Form validation
-        document.getElementById('formError').classList.add('hidden');
-
-        if (!name) {
-            showError('Name is required');
-            return;
-        }
-
-        if (!phoneNumber) {
-            showError('Phone number is required');
-            return;
-        }
-
-        const newContact = {
-            name: name,
-            surname: surname,
-            phoneNumber: phoneNumber
-        };
-
-        fetch('/api/contacts', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: `name=${encodeURIComponent(name)}&surname=${encodeURIComponent(surname)}&phoneNumber=${encodeURIComponent(phoneNumber)}`
-        })
-            .then(response => {
-                if (response.ok) {
-                    document.getElementById('contactForm').reset();
-                    loadContacts(); // Reload contacts after successful addition
-                } else {
-                    return response.text().then(text => {
-                        throw new Error(text);
-                    });
-                }
-            })
-            .catch(error => {
-                console.error('Error adding contact:', error);
-                showError('Error adding contact: ' + error.message);
-            });
+    function updateContact(id) {
+        console.log("update called");
     }
 
-    // Save an existing contact
-    function saveContact(contactId) {
-        const contactElement = document.querySelector(`.contact-item[data-id="${contactId}"]`);
-        const name = contactElement.querySelector('.name-field').textContent.trim();
-        const surname = contactElement.querySelector('.surname-field').textContent.trim();
-        const phoneNumber = contactElement.querySelector('.phone-field').textContent.trim();
-
-        if (!name) {
-            alert('Name is required');
-            return;
-        }
-
-        if (!phoneNumber) {
-            alert('Phone number is required');
-            return;
-        }
-
-        fetch('/api/contacts', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: `id=${contactId}&name=${encodeURIComponent(name)}&surname=${encodeURIComponent(surname)}&phoneNumber=${encodeURIComponent(phoneNumber)}`
-        })
-            .then(response => {
-                if (response.ok) {
-                    loadContacts(); // Reload contacts after successful update
-                } else {
-                    return response.text().then(text => {
-                        throw new Error(text);
-                    });
-                }
-            })
-            .catch(error => {
-                console.error('Error updating contact:', error);
-                alert('Error updating contact: ' + error.message);
-            });
+    function deleteContact(id) {
+        console.log("delete called");
     }
 
-    // Delete a contact
-    function deleteContact(contactId) {
-        if (!confirm('Are you sure you want to delete this contact?')) {
-            return;
-        }
-
-        fetch('/api/contacts', {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: `id=${contactId}`
-        })
-            .then(response => {
-                if (response.ok) {
-                    loadContacts(); // Reload contacts after successful deletion
-                } else {
-                    return response.text().then(text => {
-                        throw new Error(text);
-                    });
-                }
-            })
-            .catch(error => {
-                console.error('Error deleting contact:', error);
-                alert('Error deleting contact: ' + error.message);
-            });
-    }
-
-    // Show error message
     function showError(message) {
-        const errorElement = document.getElementById('formError');
-        errorElement.textContent = message;
-        errorElement.classList.remove('hidden');
+        alert(message)
     }
 </script>
 </body>
