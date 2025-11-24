@@ -58,7 +58,7 @@ public class LoginController extends HttpServlet {
         HttpSession session = req.getSession(true);
         session.setAttribute(AuthUtils.USER_EMAIL_ATTRIBUTE, email);
         resp.setStatus(HttpServletResponse.SC_OK);
-        resp.sendRedirect(PagesConstants.LOGIN_PAGE);
+        resp.sendRedirect(PagesConstants.CONTACTS_PAGE);
         log.info("User logged in with email: {}", email);
     }
 }

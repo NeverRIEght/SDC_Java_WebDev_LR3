@@ -9,6 +9,8 @@ import jakarta.servlet.annotation.WebFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -19,6 +21,8 @@ import static com.mkomarov.utils.AuthUtils.USER_EMAIL_ATTRIBUTE;
 
 @WebFilter("/api/*")
 public class AuthFilter implements Filter {
+    private static final Logger log = LoggerFactory.getLogger(AuthFilter.class);
+
     @Override
     public void init(FilterConfig filterConfig) {
     }
@@ -26,6 +30,8 @@ public class AuthFilter implements Filter {
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
             throws IOException, ServletException {
+        log.info("AuthFilter: Performing authentication filter check for new request.");
+
         HttpServletRequest req = (HttpServletRequest) request;
         HttpServletResponse resp = (HttpServletResponse) response;
 
@@ -33,6 +39,7 @@ public class AuthFilter implements Filter {
 
         // Allow only public API endpoints (register/login)
         if (AuthUtils.isPublicPath(path)) {
+            log.info("AuthFilter: Public path detected. Access granted.");
             chain.doFilter(request, response);
             return;
         }
@@ -43,6 +50,7 @@ public class AuthFilter implements Filter {
         if (session != null) {
             Object emailObj = session.getAttribute(USER_EMAIL_ATTRIBUTE);
             if (emailObj instanceof String emailStr) {
+                log.info("AuthFilter: Authenticated by session for user: {}", emailStr);
                 req.setAttribute(USER_EMAIL_ATTRIBUTE, emailStr);
                 chain.doFilter(request, response);
                 return;
@@ -69,6 +77,7 @@ public class AuthFilter implements Filter {
                         UserEntity user = userOpt.get();
                         String hashedProvided = PasswordService.hashPassword(password);
                         if (hashedProvided.equals(user.getPasswordHash())) {
+                            log.info("AuthFilter: Authenticated by login-password for user: {}", email);
                             HttpSession s = req.getSession(true);
                             s.setAttribute(USER_EMAIL_ATTRIBUTE, email);
                             req.setAttribute(USER_EMAIL_ATTRIBUTE, email);
@@ -82,6 +91,7 @@ public class AuthFilter implements Filter {
             }
         }
 
+        log.info("AuthFilter: Authenticated failed.");
         resp.setHeader("WWW-Authenticate", "Basic realm=\"Restricted\"");
         resp.sendError(HttpServletResponse.SC_UNAUTHORIZED);
     }

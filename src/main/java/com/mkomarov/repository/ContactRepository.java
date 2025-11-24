@@ -36,13 +36,15 @@ public final class ContactRepository extends AbstractRepository<ContactEntity> {
         List<ContactEntity> result = new ArrayList<>();
         String sql = "SELECT id, name, surname, phone_number FROM " + tableName + " WHERE user_id = ?";
         try (Connection conn = DatabaseProvider.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
             ps.setLong(1, ownerId);
 
-            while (rs.next()) {
-                ContactEntity contact = mapRow(rs);
-                result.add(contact);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    ContactEntity contact = mapRow(rs);
+                    result.add(contact);
+                }
             }
         } catch (SQLException e) {
             throw new RuntimeException("Failed to fetch all contacts", e);
