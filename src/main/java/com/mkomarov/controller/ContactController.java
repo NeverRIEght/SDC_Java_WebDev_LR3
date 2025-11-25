@@ -4,6 +4,7 @@ import com.mkomarov.utils.AuthUtils;
 import com.mkomarov.dto.ContactDto;
 import com.mkomarov.entity.ContactEntity;
 import com.mkomarov.service.ContactService;
+import com.mkomarov.utils.ErrorMessages;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -13,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
@@ -21,38 +23,49 @@ import java.util.Optional;
 public class ContactController extends HttpServlet {
     private static final Logger log = LoggerFactory.getLogger(ContactController.class);
 
+    private static final String JSON_CONTENT_TYPE = "application/json";
+    private static final String UTF8_ENCODING = "UTF-8";
+    private static final String ERROR_JSON = "{\"error\": \"";
+
     private final ContactService contactService = new ContactService();
     private final ObjectMapper jsonToObjectMapper = new ObjectMapper();
 
     @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
         String pathInfo = req.getPathInfo();
         log.info("Received GET request: /api/contacts/*. PathInfo: {}", pathInfo);
 
-        resp.setContentType("application/json;charset=UTF-8");
+        setJsonResponseType(resp);
 
         if (pathInfo == null || pathInfo.equals("/")) {
             handleGetAll(req, resp);
         } else {
-            handleGetSpecific(pathInfo, req, resp);
+            handleGet(pathInfo, resp);
         }
     }
 
-    private void handleGetAll(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+    private void handleGetAll(HttpServletRequest req, HttpServletResponse resp) {
         log.info("Dispatching GET request to: getAll");
 
         String ownerEmail = (String) req.getAttribute(AuthUtils.USER_EMAIL_ATTRIBUTE);
 
         List<ContactEntity> contacts = contactService.getAllContacts(ownerEmail);
         contacts.forEach(contact -> contact.getOwner().setPasswordHash(null));
+        setJsonResponseType(resp);
         String responseJson = jsonToObjectMapper.writeValueAsString(contacts);
-        resp.setContentType("application/json");
-        resp.getWriter().write(responseJson);
+
+        try {
+            resp.getWriter().write(responseJson);
+        } catch (IOException ex) {
+            log.error("{} {}", ErrorMessages.IOErrors.NETWORK_ERROR, ex);
+        }
+
+        log.info("contacts/getAll request fulfilled. Returning contacts list: {}", responseJson);
         resp.setStatus(HttpServletResponse.SC_OK);
     }
 
-    private void handleGetSpecific(String pathInfo, HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        String userIdStr = pathInfo.replaceAll("/", "");
+    private void handleGet(String pathInfo, HttpServletResponse resp) {
+        String userIdStr = pathInfo.replace("/", "");
 
         try {
             int userId = Integer.parseInt(userIdStr);
@@ -66,20 +79,29 @@ public class ContactController extends HttpServlet {
                 return;
             }
 
+            setJsonResponseType(resp);
+
             ContactEntity contact = foundEntity.get();
             contact.setOwner(null);
             String contactJson = jsonToObjectMapper.writeValueAsString(contact);
             resp.getWriter().write(contactJson);
+
             resp.setStatus(HttpServletResponse.SC_OK);
-        } catch (NumberFormatException e) {
+        } catch (NumberFormatException _) {
             log.error("Invalid id format: {}", userIdStr);
             resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            resp.getWriter().write("{\"error\": \"Invalid id format\"}");
+            try {
+                resp.getWriter().write("{\"error\": \"Invalid id format\"}");
+            } catch (IOException ex) {
+                log.error("{} {}", ErrorMessages.IOErrors.NETWORK_ERROR, ex);
+            }
+        } catch (IOException ex) {
+            log.error("{} {}", ErrorMessages.IOErrors.IO_ERROR, ex);
         }
     }
 
     @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) {
         log.info("Received POST request: /api/contacts");
 
         String name = req.getParameter("name");
@@ -102,45 +124,49 @@ public class ContactController extends HttpServlet {
             List<ContactEntity> contacts = contactService.getAllContacts(ownerEmail);
             contacts.forEach(contact -> contact.getOwner().setPasswordHash(null));
             String responseJson = jsonToObjectMapper.writeValueAsString(contacts);
-            resp.setContentType("application/json");
+            setJsonResponseType(resp);
             resp.getWriter().write(responseJson);
 
             resp.setStatus(HttpServletResponse.SC_CREATED);
         } catch (IllegalArgumentException e) {
             log.error("Error creating contact: {}", e.getMessage());
             resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            resp.getWriter().write("{\"error\": \"" + e.getMessage() + "\"}");
+            try {
+                resp.getWriter().write(ERROR_JSON + e.getMessage() + "\"}");
+            } catch (IOException ex) {
+                log.error("{} {}", ErrorMessages.IOErrors.NETWORK_ERROR, ex);
+            }
         } catch (Exception e) {
             log.error("Unexpected error: {}", e.getMessage());
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            resp.getWriter().write("{\"error\": \"" + e.getMessage() + "\"}");
+            try {
+                resp.getWriter().write(ERROR_JSON + e.getMessage() + "\"}");
+            } catch (IOException ex) {
+                log.error("{} {}", ErrorMessages.IOErrors.NETWORK_ERROR, ex);
+            }
         }
     }
 
     @Override
-    protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+    protected void doPut(HttpServletRequest req, HttpServletResponse resp) {
         String pathInfo = req.getPathInfo();
         log.info("Received PUT request: /api/contacts/*. PathInfo: {}", pathInfo);
 
-        if (pathInfo == null || pathInfo.equals("/")) {
-            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            resp.getWriter().write("{\"error\": \"Missing contact ID in URL\"}");
+        Optional<Long> pathId = parseIdPathVariable(pathInfo, resp);
+        if (pathId.isEmpty()) {
             return;
         }
 
-        String idStr = pathInfo.replaceAll("/", "");
-        long id;
-        try {
-            id = Long.parseLong(idStr);
-        } catch (NumberFormatException e) {
-            log.error("Invalid id format in URL: {}", idStr);
+        String requestBody = reduceRequestBody(req);
+        if (requestBody.isBlank()) {
             resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            resp.getWriter().write("{\"error\": \"Invalid id format in URL\"}");
+            try {
+                resp.getWriter().write("{\"error\": \"Missing request body\"}");
+            } catch (IOException ex) {
+                log.error("{} {}", ErrorMessages.IOErrors.NETWORK_ERROR, ex);
+            }
             return;
         }
-
-        String requestBody = req.getReader().lines()
-                .reduce("", (accumulator, actual) -> accumulator + actual);
 
         String name = null;
         String surname = null;
@@ -149,8 +175,8 @@ public class ContactController extends HttpServlet {
         for (String pair : requestBody.split("&")) {
             String[] parts = pair.split("=");
             if (parts.length == 2) {
-                String key = java.net.URLDecoder.decode(parts[0], StandardCharsets.UTF_8);
-                String value = java.net.URLDecoder.decode(parts[1], StandardCharsets.UTF_8);
+                String key = URLDecoder.decode(parts[0], StandardCharsets.UTF_8);
+                String value = URLDecoder.decode(parts[1], StandardCharsets.UTF_8);
 
                 if ("name".equals(key)) name = value;
                 else if ("surname".equals(key)) surname = value;
@@ -161,7 +187,7 @@ public class ContactController extends HttpServlet {
         String ownerEmail = (String) req.getAttribute(AuthUtils.USER_EMAIL_ATTRIBUTE);
 
         ContactDto contactDto = new ContactDto(
-                id,
+                pathId.get(),
                 ownerEmail,
                 name,
                 surname,
@@ -174,47 +200,96 @@ public class ContactController extends HttpServlet {
         } catch (IllegalArgumentException e) {
             log.error("Error updating contact: {}", e.getMessage());
             resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            resp.getWriter().write("{\"error\": \"" + e.getMessage() + "\"}");
+            try {
+                resp.getWriter().write(ERROR_JSON + e.getMessage() + "\"}");
+            } catch (IOException ex) {
+                log.error("{} {}", ErrorMessages.IOErrors.NETWORK_ERROR, ex);
+            }
         } catch (Exception e) {
             log.error("Unexpected error: {}", e.getMessage());
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            resp.getWriter().write("{\"error\": \"" + e.getMessage() + "\"}");
+            try {
+                resp.getWriter().write(ERROR_JSON + e.getMessage() + "\"}");
+            } catch (IOException ex) {
+                log.error("{} {}", ErrorMessages.IOErrors.NETWORK_ERROR, ex);
+            }
         }
     }
 
     @Override
-    protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+    protected void doDelete(HttpServletRequest req, HttpServletResponse resp) {
         String pathInfo = req.getPathInfo();
         log.info("Received DELETE request: /api/contacts/*. PathInfo: {}", pathInfo);
 
-        if (pathInfo == null || pathInfo.equals("/")) {
-            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            resp.getWriter().write("{\"error\": \"Missing contact ID in URL\"}");
-            return;
-        }
-
-        String idStr = pathInfo.replaceAll("/", "");
-        long id;
-        try {
-            id = Long.parseLong(idStr);
-        } catch (NumberFormatException e) {
-            log.error("Invalid id format in URL: {}", idStr);
-            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            resp.getWriter().write("{\"error\": \"Invalid id format in URL\"}");
+        Optional<Long> pathId = parseIdPathVariable(pathInfo, resp);
+        if (pathId.isEmpty()) {
             return;
         }
 
         try {
-            contactService.deleteContact(id);
+            contactService.deleteContact(pathId.get());
             resp.setStatus(HttpServletResponse.SC_OK);
         } catch (IllegalArgumentException e) {
             log.error("Error deleting contact: {}", e.getMessage());
             resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            resp.getWriter().write("{\"error\": \"" + e.getMessage() + "\"}");
+            try {
+                resp.getWriter().write(ERROR_JSON + e.getMessage() + "\"}");
+            } catch (IOException ex) {
+                log.error("{} {}", ErrorMessages.IOErrors.NETWORK_ERROR, ex);
+            }
         } catch (Exception e) {
             log.error("Unexpected error: {}", e.getMessage());
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            resp.getWriter().write("{\"error\": \"" + e.getMessage() + "\"}");
+            try {
+                resp.getWriter().write(ERROR_JSON + e.getMessage() + "\"}");
+            } catch (IOException ex) {
+                log.error("{} {}", ErrorMessages.IOErrors.NETWORK_ERROR, ex);
+            }
         }
+    }
+
+    private Optional<Long> parseIdPathVariable(String pathInfo, HttpServletResponse resp) {
+        if (pathInfo == null || pathInfo.equals("/")) {
+            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            try {
+                resp.getWriter().write("{\"error\": \"Missing contact ID in URL\"}");
+            } catch (IOException ex) {
+                log.error("{} {}", ErrorMessages.IOErrors.NETWORK_ERROR, ex);
+            }
+            return Optional.empty();
+        }
+
+        String idStr = pathInfo.replace("/", "");
+        try {
+            long id = Long.parseLong(idStr);
+            return Optional.of(id);
+        } catch (NumberFormatException _) {
+            log.error("Invalid id format in URL: {}", idStr);
+            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            try {
+                resp.getWriter().write("{\"error\": \"Invalid id format in URL\"}");
+            } catch (IOException ex) {
+                log.error("{} {}", ErrorMessages.IOErrors.NETWORK_ERROR, ex);
+            }
+        }
+
+        return Optional.empty();
+    }
+
+    private String reduceRequestBody(HttpServletRequest req) {
+        String requestBody = "";
+        try {
+            requestBody = req.getReader().lines()
+                    .reduce("", (accumulator, actual) -> accumulator + actual);
+        } catch (IOException ex) {
+            log.error("{} {}", ErrorMessages.IOErrors.NETWORK_ERROR, ex);
+        }
+
+        return requestBody;
+    }
+
+    private void setJsonResponseType(HttpServletResponse resp) {
+        resp.setContentType(JSON_CONTENT_TYPE);
+        resp.setCharacterEncoding(UTF8_ENCODING);
     }
 }
