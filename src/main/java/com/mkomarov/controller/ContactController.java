@@ -27,7 +27,7 @@ public class ContactController extends HttpServlet {
     private static final String UTF8_ENCODING = "UTF-8";
     private static final String ERROR_JSON = "{\"error\": \"";
 
-    private final ContactService contactService = new ContactService();
+    private static final ContactService contactService = new ContactService();
     private final ObjectMapper jsonToObjectMapper = new ObjectMapper();
 
     @Override
