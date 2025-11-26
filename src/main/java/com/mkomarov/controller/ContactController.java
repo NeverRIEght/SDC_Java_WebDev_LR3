@@ -1,6 +1,5 @@
 package com.mkomarov.controller;
 
-import com.mkomarov.utils.ApiConstants;
 import com.mkomarov.utils.AuthUtils;
 import com.mkomarov.dto.ContactDto;
 import com.mkomarov.entity.ContactEntity;
@@ -21,6 +20,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static com.mkomarov.utils.ApiConstants.*;
+import static com.mkomarov.utils.ApiUtils.*;
 
 @WebServlet("/api/contacts/*")
 public class ContactController extends HttpServlet {
@@ -245,50 +245,5 @@ public class ContactController extends HttpServlet {
                 log.error("{} {}", ErrorMessages.IOErrors.NETWORK_ERROR, ex);
             }
         }
-    }
-
-    private Optional<Long> parseIdPathVariable(String pathInfo, HttpServletResponse resp) {
-        if (pathInfo == null || pathInfo.equals("/")) {
-            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            try {
-                resp.getWriter().write("{\"error\": \"Missing contact ID in URL\"}");
-            } catch (IOException ex) {
-                log.error("{} {}", ErrorMessages.IOErrors.NETWORK_ERROR, ex);
-            }
-            return Optional.empty();
-        }
-
-        String idStr = pathInfo.replace("/", "");
-        try {
-            long id = Long.parseLong(idStr);
-            return Optional.of(id);
-        } catch (NumberFormatException _) {
-            log.error("Invalid id format in URL: {}", idStr);
-            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            try {
-                resp.getWriter().write("{\"error\": \"Invalid id format in URL\"}");
-            } catch (IOException ex) {
-                log.error("{} {}", ErrorMessages.IOErrors.NETWORK_ERROR, ex);
-            }
-        }
-
-        return Optional.empty();
-    }
-
-    private String reduceRequestBody(HttpServletRequest req) {
-        String requestBody = "";
-        try {
-            requestBody = req.getReader().lines()
-                    .reduce("", (accumulator, actual) -> accumulator + actual);
-        } catch (IOException ex) {
-            log.error("{} {}", ErrorMessages.IOErrors.NETWORK_ERROR, ex);
-        }
-
-        return requestBody;
-    }
-
-    private void setJsonResponseType(HttpServletResponse resp) {
-        resp.setContentType(JSON_CONTENT_TYPE);
-        resp.setCharacterEncoding(UTF8_ENCODING);
     }
 }
