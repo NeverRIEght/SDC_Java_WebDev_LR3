@@ -1,5 +1,6 @@
 package com.mkomarov.controller;
 
+import com.mkomarov.utils.ApiConstants;
 import com.mkomarov.utils.AuthUtils;
 import com.mkomarov.dto.ContactDto;
 import com.mkomarov.entity.ContactEntity;
@@ -19,13 +20,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 
+import static com.mkomarov.utils.ApiConstants.*;
+
 @WebServlet("/api/contacts/*")
 public class ContactController extends HttpServlet {
     private static final Logger log = LoggerFactory.getLogger(ContactController.class);
-
-    private static final String JSON_CONTENT_TYPE = "application/json";
-    private static final String UTF8_ENCODING = "UTF-8";
-    private static final String ERROR_JSON = "{\"error\": \"";
 
     private static final ContactService contactService = new ContactService();
     private final ObjectMapper jsonToObjectMapper = new ObjectMapper();
