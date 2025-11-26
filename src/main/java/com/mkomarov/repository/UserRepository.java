@@ -124,7 +124,7 @@ public final class UserRepository extends AbstractRepository<UserEntity> {
         return Optional.empty();
     }
 
-    private UserEntity mapRow(ResultSet rs) throws SQLException {
+    protected UserEntity mapRow(ResultSet rs) throws SQLException {
         UserEntity user = new UserEntity();
         user.setId(rs.getLong("id"));
         user.setEmail(rs.getString("email"));

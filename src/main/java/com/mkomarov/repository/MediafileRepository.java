@@ -2,46 +2,43 @@ package com.mkomarov.repository;
 
 import com.mkomarov.db.DatabaseProvider;
 import com.mkomarov.entity.ContactEntity;
+import com.mkomarov.entity.MediafileEntity;
 import com.mkomarov.entity.UserEntity;
 import com.mkomarov.service.UserService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-public final class ContactRepository extends AbstractRepository<ContactEntity> {
-    private static final Logger log = LoggerFactory.getLogger(ContactRepository.class);
+public class MediafileRepository extends AbstractRepository<MediafileEntity> {
+    private static final UserService userService = new UserService();
 
-    private final UserService userService = new UserService();
-
-    public ContactRepository(String tableName) {
+    public MediafileRepository(String tableName) {
         super(tableName);
     }
-
+    
     @Override
-    public List<ContactEntity> getAll() {
-        List<ContactEntity> result = new ArrayList<>();
-        String sql = "SELECT id, user_id, name, surname, phone_number FROM " + tableName;
+    protected List<MediafileEntity> getAll() {
+        List<MediafileEntity> result = new ArrayList<>();
+        String sql = "SELECT id, user_id, filename, hash FROM " + tableName;
         try (Connection conn = DatabaseProvider.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
-                ContactEntity contact = mapRow(rs);
+                MediafileEntity contact = mapRow(rs);
                 result.add(contact);
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to fetch all contacts", e);
+            throw new RuntimeException("Failed to fetch all entities", e);
         }
         return result;
     }
 
-    public List<ContactEntity> getAllByOwnerId(Long ownerId) {
-        List<ContactEntity> result = new ArrayList<>();
-        String sql = "SELECT id, user_id, name, surname, phone_number FROM " + tableName + " WHERE user_id = ?";
+    public List<MediafileEntity> getAllByOwnerId(Long ownerId) {
+        List<MediafileEntity> result = new ArrayList<>();
+        String sql = "SELECT id, user_id, filename, hash FROM " + tableName + " WHERE user_id = ?";
         try (Connection conn = DatabaseProvider.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
@@ -49,19 +46,19 @@ public final class ContactRepository extends AbstractRepository<ContactEntity> {
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    ContactEntity contact = mapRow(rs);
+                    MediafileEntity contact = mapRow(rs);
                     result.add(contact);
                 }
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to fetch all contacts", e);
+            throw new RuntimeException("Failed to fetch all entities", e);
         }
         return result;
     }
 
     @Override
-    public Optional<ContactEntity> getById(long id) {
-        String sql = "SELECT id, user_id, name, surname, phone_number FROM " + tableName + " WHERE id = ?";
+    protected Optional<MediafileEntity> getById(long id) {
+        String sql = "SELECT id, user_id, filename, hash FROM " + tableName + " WHERE id = ?";
         try (Connection conn = DatabaseProvider.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, id);
@@ -71,59 +68,57 @@ public final class ContactRepository extends AbstractRepository<ContactEntity> {
                 }
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to fetch contact by id", e);
+            throw new RuntimeException("Failed to fetch entity by id", e);
         }
         return Optional.empty();
     }
 
     @Override
-    public ContactEntity create(ContactEntity entityToCreate) {
-        String sql = "INSERT INTO " + tableName + " (user_id, name, surname, phone_number) VALUES (?, ?, ?, ?)";
+    protected MediafileEntity create(MediafileEntity entityToCreate) {
+        String sql = "INSERT INTO " + tableName + " (user_id, filename, hash) VALUES (?, ?, ?)";
         try (Connection conn = DatabaseProvider.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setLong(1, entityToCreate.getOwner().getId());
-            ps.setString(2, entityToCreate.getName());
-            ps.setString(3, entityToCreate.getSurname());
-            ps.setString(4, entityToCreate.getPhoneNumber());
+            ps.setString(2, entityToCreate.getFileName());
+            ps.setString(3, entityToCreate.getHash());
             int affected = ps.executeUpdate();
             if (affected == 0) {
-                throw new RuntimeException("Creating contact failed, no rows affected.");
+                throw new RuntimeException("Creating failed, no rows affected.");
             }
             try (ResultSet generatedKeys = ps.getGeneratedKeys()) {
                 if (generatedKeys.next()) {
                     entityToCreate.setId(generatedKeys.getLong(1));
                 } else {
-                    throw new RuntimeException("Creating contact failed, no ID obtained.");
+                    throw new RuntimeException("Creating failed, no ID obtained.");
                 }
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to create contact", e);
+            throw new RuntimeException("Failed to create entity", e);
         }
         return entityToCreate;
     }
 
     @Override
-    public ContactEntity update(ContactEntity updatedEntity) {
-        String sql = "UPDATE " + tableName + " SET name = ?, surname = ?, phone_number = ? WHERE id = ?";
+    protected MediafileEntity update(MediafileEntity updatedEntity) {
+        String sql = "UPDATE " + tableName + " SET filename = ?, hash = ? WHERE id = ?";
         try (Connection conn = DatabaseProvider.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, updatedEntity.getName());
-            ps.setString(2, updatedEntity.getSurname());
-            ps.setString(3, updatedEntity.getPhoneNumber());
-            ps.setLong(4, updatedEntity.getId());
+            ps.setString(1, updatedEntity.getFileName());
+            ps.setString(2, updatedEntity.getHash());
+            ps.setLong(3, updatedEntity.getId());
             int affected = ps.executeUpdate();
             if (affected == 0) {
-                throw new RuntimeException("Updating contact failed, no rows affected.");
+                throw new RuntimeException("Updating failed, no rows affected.");
             }
             return updatedEntity;
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to update contact", e);
+            throw new RuntimeException("Failed to update entity", e);
         }
     }
 
     @Override
-    public ContactEntity delete(long id) {
-        Optional<ContactEntity> existing = getById(id);
+    protected MediafileEntity delete(long id) {
+        Optional<MediafileEntity> existing = getById(id);
         if (existing.isEmpty()) return null;
         String sql = "DELETE FROM " + tableName + " WHERE id = ?";
         try (Connection conn = DatabaseProvider.getConnection();
@@ -133,24 +128,22 @@ public final class ContactRepository extends AbstractRepository<ContactEntity> {
             if (affected == 0) return null;
             return existing.get();
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to delete contact", e);
+            throw new RuntimeException("Failed to delete entity", e);
         }
     }
 
-    protected ContactEntity mapRow(ResultSet rs) throws SQLException {
-        ContactEntity contact = new ContactEntity();
-        contact.setId(rs.getLong("id"));
+    protected MediafileEntity mapRow(ResultSet rs) throws SQLException {
+        MediafileEntity entity = new MediafileEntity();
+        entity.setId(rs.getLong("id"));
 
         long ownerId = rs.getLong("user_id");
 
         UserEntity owner = userService.getUserById(ownerId).orElseThrow(() ->
                 new RuntimeException("Owner with ID " + ownerId + " not found"));
 
-        contact.setOwner(owner);
-        contact.setName(rs.getString("name"));
-        contact.setSurname(rs.getString("surname"));
-        contact.setPhoneNumber(rs.getString("phone_number"));
-        return contact;
+        entity.setOwner(owner);
+        entity.setFileName(rs.getString("filename"));
+        entity.setHash(rs.getString("hash"));
+        return entity;
     }
 }
-
