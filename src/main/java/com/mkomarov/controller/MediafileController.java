@@ -74,7 +74,6 @@ public class MediafileController extends HttpServlet {
             setJsonResponseType(resp);
 
             MediafileEntity entity = foundEntity.get();
-            entity.setOwner(null);
             String jsonResponseString = jsonToObjectMapper.writeValueAsString(entity);
             resp.getWriter().write(jsonResponseString);
 
@@ -93,7 +92,7 @@ public class MediafileController extends HttpServlet {
     }
 
     @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         log.info("Received POST request: /api/mediafiles");
 
         boolean isMultipart = JakartaServletFileUpload.isMultipartContent(req);

@@ -34,12 +34,12 @@ public class ContactService {
 
         validateContactDto(request);
 
-        ContactEntity newContact = new ContactEntity(
-                owner.get(),
-                request.getName(),
-                request.getSurname(),
-                request.getPhoneNumber()
-        );
+        ContactEntity newContact = ContactEntity.builder()
+                .owner(owner.get())
+                .name(request.getName())
+                .surname(request.getSurname())
+                .phoneNumber(request.getPhoneNumber())
+                .build();
 
         contactRepository.create(newContact);
     }

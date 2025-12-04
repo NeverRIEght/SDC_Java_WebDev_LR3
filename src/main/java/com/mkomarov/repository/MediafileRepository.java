@@ -20,7 +20,7 @@ public class MediafileRepository extends AbstractRepository<MediafileEntity> {
     @Override
     public List<MediafileEntity> getAll() {
         List<MediafileEntity> result = new ArrayList<>();
-        String sql = "SELECT id, user_id, filename, hash FROM " + tableName;
+        String sql = "SELECT id, filename, hash FROM " + tableName;
         try (Connection conn = DatabaseProvider.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
@@ -37,7 +37,10 @@ public class MediafileRepository extends AbstractRepository<MediafileEntity> {
 
     public List<MediafileEntity> getAllByOwnerId(Long ownerId) {
         List<MediafileEntity> result = new ArrayList<>();
-        String sql = "SELECT id, user_id, filename, hash FROM " + tableName + " WHERE user_id = ?";
+        String sql = "SELECT m.id, m.filename, m.hash " +
+                "FROM " + tableName + "as m " +
+                "JOIN contacts as c ON c.mediafile_id = m.id " +
+                "WHERE c.user_id = ?";
         try (Connection conn = DatabaseProvider.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
@@ -55,9 +58,32 @@ public class MediafileRepository extends AbstractRepository<MediafileEntity> {
         return result;
     }
 
+    public List<MediafileEntity> getAllByContactId(Long contactId) {
+        List<MediafileEntity> result = new ArrayList<>();
+        String sql = "SELECT m.id, m.filename, m.hash " +
+                "FROM " + tableName + "as m " +
+                "JOIN contacts as c ON c.mediafile_id = m.id " +
+                "WHERE c.id = ?";
+        try (Connection conn = DatabaseProvider.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setLong(1, contactId);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    MediafileEntity contact = mapRow(rs);
+                    result.add(contact);
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to fetch all entities", e);
+        }
+        return result;
+    }
+
     @Override
     public Optional<MediafileEntity> getById(long id) {
-        String sql = "SELECT id, user_id, filename, hash FROM " + tableName + " WHERE id = ?";
+        String sql = "SELECT id, filename, hash FROM " + tableName + " WHERE id = ?";
         try (Connection conn = DatabaseProvider.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, id);
@@ -74,12 +100,11 @@ public class MediafileRepository extends AbstractRepository<MediafileEntity> {
 
     @Override
     public MediafileEntity create(MediafileEntity entityToCreate) {
-        String sql = "INSERT INTO " + tableName + " (user_id, filename, hash) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO " + tableName + " (filename, hash) VALUES (?, ?)";
         try (Connection conn = DatabaseProvider.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setLong(1, entityToCreate.getOwner().getId());
-            ps.setString(2, entityToCreate.getFileName());
-            ps.setString(3, entityToCreate.getHash());
+            ps.setString(1, entityToCreate.getFileName());
+            ps.setString(2, entityToCreate.getHash());
             int affected = ps.executeUpdate();
             if (affected == 0) {
                 throw new RuntimeException("Creating failed, no rows affected.");
@@ -134,13 +159,6 @@ public class MediafileRepository extends AbstractRepository<MediafileEntity> {
     protected MediafileEntity mapRow(ResultSet rs) throws SQLException {
         MediafileEntity entity = new MediafileEntity();
         entity.setId(rs.getLong("id"));
-
-        long ownerId = rs.getLong("user_id");
-
-        UserEntity owner = userService.getUserById(ownerId).orElseThrow(() ->
-                new RuntimeException("Owner with ID " + ownerId + " not found"));
-
-        entity.setOwner(owner);
         entity.setFileName(rs.getString("filename"));
         entity.setHash(rs.getString("hash"));
         return entity;

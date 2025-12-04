@@ -10,12 +10,13 @@ CREATE TABLE contacts (
     name TEXT NOT NULL,
     surname TEXT,
     phone_number TEXT NOT NULL,
-    UNIQUE(user_id, phone_number)
+    mediafile_id BIGINT REFERENCES mediafiles(id),
+    UNIQUE(user_id, phone_number),
+    UNIQUE(mediafile_id)
 );
 
 CREATE TABLE mediafiles (
     id SERIAL PRIMARY KEY,
-    user_id BIGINT NOT NULL REFERENCES users(id),
     fileName TEXT NOT NULL,
     hash TEXT NOT NULL
 )

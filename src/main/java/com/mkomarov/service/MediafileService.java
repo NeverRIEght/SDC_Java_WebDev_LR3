@@ -1,5 +1,6 @@
 package com.mkomarov.service;
 
+import com.mkomarov.dto.ContactDto;
 import com.mkomarov.dto.MediafileDto;
 import com.mkomarov.entity.ContactEntity;
 import com.mkomarov.entity.MediafileEntity;
@@ -58,18 +59,32 @@ public class MediafileService {
         if (associatedContact.isEmpty()) {
             throw new IllegalArgumentException("Invalid associated contact with ID: " + associatedContactId);
         }
+        ContactEntity contact = associatedContact.get();
 
-        if (!(associatedContact.get().getOwner().getId() == owner.get().getId())) {
+        if (!(contact.getOwner().getId() == owner.get().getId())) {
             throw new IllegalArgumentException("Invalid associated contact with ID: " + associatedContactId);
         }
 
         MediafileEntity mediafileEntity = new MediafileEntity();
         mediafileEntity.setFileName(request.getFilename());
-        mediafileEntity.setOwner(owner.get());
-        mediafileEntity.setAssociatedContact(associatedContact.get());
+
+        contact.setMediafile(mediafileEntity);
+        try {
+            contactService.updateContact(ContactDto.builder()
+                    .id(contact.getId())
+                    .ownerEmail(request.getOwnerEmail())
+                    .name(contact.getName())
+                    .surname(contact.getSurname())
+                    .phoneNumber(contact.getPhoneNumber())
+                    .build()
+            );
+        } catch (IllegalArgumentException e) {
+            log.error("Error associating mediafile with contact: {}", e.getMessage());
+            throw new RuntimeException("Error associating mediafile with contact.");
+        }
 
         String hash;
-        try (ByteArrayInputStream hashStream = new ByteArrayInputStream(request.getFileData())){
+        try (ByteArrayInputStream hashStream = new ByteArrayInputStream(request.getFileData())) {
             hash = HashingService.calculateSha256(hashStream);
         } catch (IOException e) {
             log.error("Error calculating hash for mediafile: {}", e.getMessage());
@@ -92,7 +107,15 @@ public class MediafileService {
         }
     }
 
+    public void getMediafilesByContactId(long contactId) {
+        mediafileRepository.getAllByOwnerId(contactId);
+    }
+
     public void deleteById(long id) {
         mediafileRepository.delete(id);
+    }
+
+    private boolean validateMediafileDto(MediafileDto request) {
+        return true;
     }
 }
