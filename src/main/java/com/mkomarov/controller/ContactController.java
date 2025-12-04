@@ -64,13 +64,13 @@ public class ContactController extends HttpServlet {
     }
 
     private void handleGet(String pathInfo, HttpServletResponse resp) {
-        String userIdStr = pathInfo.replace("/", "");
+        String idStr = pathInfo.replace("/", "");
 
         try {
-            int userId = Integer.parseInt(userIdStr);
-            log.info("Dispatching GET request to: getSpecific, id: {}", userId);
+            int id = Integer.parseInt(idStr);
+            log.info("Dispatching GET request to: getSpecific, id: {}", id);
 
-            Optional<ContactEntity> foundEntity = contactService.getContactById(userId);
+            Optional<ContactEntity> foundEntity = contactService.getContactById(id);
 
             if (foundEntity.isEmpty()) {
                 resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
@@ -87,7 +87,7 @@ public class ContactController extends HttpServlet {
 
             resp.setStatus(HttpServletResponse.SC_OK);
         } catch (NumberFormatException _) {
-            log.error("Invalid id format: {}", userIdStr);
+            log.error("Invalid id format: {}", idStr);
             resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             try {
                 resp.getWriter().write("{\"error\": \"Invalid id format\"}");
@@ -151,7 +151,7 @@ public class ContactController extends HttpServlet {
         String pathInfo = req.getPathInfo();
         log.info("Received PUT request: /api/contacts/*. PathInfo: {}", pathInfo);
 
-        Optional<Long> pathId = parseIdPathVariable(pathInfo, resp);
+        Optional<Long> pathId = extractIdFromPath(pathInfo, resp);
         if (pathId.isEmpty()) {
             return;
         }
@@ -220,7 +220,7 @@ public class ContactController extends HttpServlet {
         String pathInfo = req.getPathInfo();
         log.info("Received DELETE request: /api/contacts/*. PathInfo: {}", pathInfo);
 
-        Optional<Long> pathId = parseIdPathVariable(pathInfo, resp);
+        Optional<Long> pathId = extractIdFromPath(pathInfo, resp);
         if (pathId.isEmpty()) {
             return;
         }

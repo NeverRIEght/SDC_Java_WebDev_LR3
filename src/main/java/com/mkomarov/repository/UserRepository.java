@@ -1,6 +1,6 @@
 package com.mkomarov.repository;
 
-import com.mkomarov.db.DatabaseProvider;
+import com.mkomarov.data.DatabaseProvider;
 import com.mkomarov.entity.UserEntity;
 
 import java.sql.*;

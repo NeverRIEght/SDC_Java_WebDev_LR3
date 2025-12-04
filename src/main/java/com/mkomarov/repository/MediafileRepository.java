@@ -1,7 +1,6 @@
 package com.mkomarov.repository;
 
-import com.mkomarov.db.DatabaseProvider;
-import com.mkomarov.entity.ContactEntity;
+import com.mkomarov.data.DatabaseProvider;
 import com.mkomarov.entity.MediafileEntity;
 import com.mkomarov.entity.UserEntity;
 import com.mkomarov.service.UserService;
@@ -17,9 +16,9 @@ public class MediafileRepository extends AbstractRepository<MediafileEntity> {
     public MediafileRepository(String tableName) {
         super(tableName);
     }
-    
+
     @Override
-    protected List<MediafileEntity> getAll() {
+    public List<MediafileEntity> getAll() {
         List<MediafileEntity> result = new ArrayList<>();
         String sql = "SELECT id, user_id, filename, hash FROM " + tableName;
         try (Connection conn = DatabaseProvider.getConnection();
@@ -57,7 +56,7 @@ public class MediafileRepository extends AbstractRepository<MediafileEntity> {
     }
 
     @Override
-    protected Optional<MediafileEntity> getById(long id) {
+    public Optional<MediafileEntity> getById(long id) {
         String sql = "SELECT id, user_id, filename, hash FROM " + tableName + " WHERE id = ?";
         try (Connection conn = DatabaseProvider.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -74,7 +73,7 @@ public class MediafileRepository extends AbstractRepository<MediafileEntity> {
     }
 
     @Override
-    protected MediafileEntity create(MediafileEntity entityToCreate) {
+    public MediafileEntity create(MediafileEntity entityToCreate) {
         String sql = "INSERT INTO " + tableName + " (user_id, filename, hash) VALUES (?, ?, ?)";
         try (Connection conn = DatabaseProvider.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -99,7 +98,7 @@ public class MediafileRepository extends AbstractRepository<MediafileEntity> {
     }
 
     @Override
-    protected MediafileEntity update(MediafileEntity updatedEntity) {
+    public MediafileEntity update(MediafileEntity updatedEntity) {
         String sql = "UPDATE " + tableName + " SET filename = ?, hash = ? WHERE id = ?";
         try (Connection conn = DatabaseProvider.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -117,7 +116,7 @@ public class MediafileRepository extends AbstractRepository<MediafileEntity> {
     }
 
     @Override
-    protected MediafileEntity delete(long id) {
+    public MediafileEntity delete(long id) {
         Optional<MediafileEntity> existing = getById(id);
         if (existing.isEmpty()) return null;
         String sql = "DELETE FROM " + tableName + " WHERE id = ?";

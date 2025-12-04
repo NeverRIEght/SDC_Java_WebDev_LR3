@@ -88,7 +88,7 @@ public class ContactService {
         if (phoneNumber == null || phoneNumber.isBlank()) {
             throw new IllegalArgumentException("Contact phone number cannot be null or empty.");
         }
-        if (!phoneNumber.matches("^\\+?[0-9]{11}$")) {
+        if (!phoneNumber.matches("^\\+?\\d{11}$")) {
             throw new IllegalArgumentException("Contact phone number format is invalid.");
         }
     }

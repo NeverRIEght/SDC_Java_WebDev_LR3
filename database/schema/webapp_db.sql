@@ -12,3 +12,10 @@ CREATE TABLE contacts (
     phone_number TEXT NOT NULL,
     UNIQUE(user_id, phone_number)
 );
+
+CREATE TABLE mediafiles (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id),
+    fileName TEXT NOT NULL,
+    hash TEXT NOT NULL
+)
