@@ -58,7 +58,7 @@ public class MediafileRepository extends AbstractRepository<MediafileEntity> {
     public List<MediafileEntity> getAllByContactId(Long contactId) {
         List<MediafileEntity> result = new ArrayList<>();
         String sql = "SELECT m.id, m.filename, m.hash " +
-                "FROM " + tableName + "as m " +
+                "FROM " + tableName + " as m " +
                 "JOIN contacts as c ON c.mediafile_id = m.id " +
                 "WHERE c.id = ?";
         try (Connection conn = DatabaseProvider.getConnection();

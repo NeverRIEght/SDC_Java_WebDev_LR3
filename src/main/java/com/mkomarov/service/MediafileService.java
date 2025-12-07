@@ -69,6 +69,12 @@ public class MediafileService {
             throw new IllegalArgumentException("Invalid associated contact with ID: " + associatedContactId);
         }
 
+        List<MediafileEntity> existingMediafiles = mediafileRepository.getAllByContactId(contact.getId());
+        if (!existingMediafiles.isEmpty()) {
+            throw new IllegalArgumentException("Contact with ID " + contact.getId() +
+                    " already has an associated mediafile.");
+        }
+
         MediafileEntity mediafileEntity = new MediafileEntity();
         mediafileEntity.setFileName(request.getFilename());
 
@@ -83,7 +89,6 @@ public class MediafileService {
         mediafileEntity = mediafileRepository.create(mediafileEntity);
         long mediafileId = mediafileEntity.getId();
         request.setId(mediafileId);
-
 
         try {
             contactService.addMediafileToContact(mediafileId, contact.getId());
@@ -108,6 +113,31 @@ public class MediafileService {
     }
 
     public void deleteById(long id) {
-        mediafileRepository.delete(id);
+        List<MediafileEntity> mediafiles = mediafileRepository.getAllByContactId(id);
+        if (mediafiles.isEmpty()) {
+            throw new IllegalArgumentException("No mediafiles associated with contact id: " + id);
+        }
+
+        mediafiles.forEach(mediafileEntity -> {
+            try {
+                String originalFilename = mediafileEntity.getFileName();
+                String fileExtension = "";
+                int dotIndex = originalFilename.lastIndexOf('.');
+                if (dotIndex > 0) {
+                    fileExtension = originalFilename.substring(dotIndex);
+                }
+
+                String objectName = mediafileEntity.getId() + fileExtension;
+                objectStorageService.deleteMediaFile(objectName);
+                log.info("Mediafile with id {} deleted from object storage.", mediafileEntity.getId());
+            } catch (IOException e) {
+                log.error("Error deleting mediafile from object storage: {}", e.getMessage());
+                throw new RuntimeException("Error deleting mediafile from object storage.");
+            }
+
+            contactService.removeMediafileFromContact(id);
+
+            mediafileRepository.delete(mediafileEntity.getId());
+        });
     }
 }

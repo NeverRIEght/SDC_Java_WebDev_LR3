@@ -156,7 +156,7 @@ public class MediafileController extends HttpServlet {
                     .build();
 
             mediafileService.create(mediafileDto);
-
+            resp.setStatus(HttpServletResponse.SC_CREATED);
         } catch (IllegalArgumentException e) {
             log.error("Error creating entity: {}", e.getMessage());
             resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);

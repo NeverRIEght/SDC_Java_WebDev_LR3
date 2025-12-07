@@ -24,7 +24,6 @@ public class ObjectStorageService {
 
     public String uploadMediaFile(MediafileDto mediafileDto)
             throws IOException {
-
         String originalFilename = mediafileDto.getFilename();
         String fileExtension = "";
         int dotIndex = originalFilename.lastIndexOf('.');
@@ -33,6 +32,8 @@ public class ObjectStorageService {
         }
 
         String objectName = mediafileDto.getId() + fileExtension;
+
+        log.info("Uploading media file to S3 bucket: {}/{}", BUCKET_NAME, objectName);
 
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                 .bucket(BUCKET_NAME)
@@ -54,6 +55,24 @@ public class ObjectStorageService {
         }
 
         return objectName;
+    }
+
+    public void deleteMediaFile(String objectName) throws IOException {
+        log.info("Deleting media file from S3 bucket: {}/{}", BUCKET_NAME, objectName);
+
+        try {
+            DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
+                    .bucket(BUCKET_NAME)
+                    .key(objectName)
+                    .build();
+
+            objectStorageClient.deleteObject(deleteObjectRequest);
+            log.info("Successfully deleted media file: {}", objectName);
+        } catch (S3Exception e) {
+            log.error("Failed to delete media file '{}' from bucket '{}'. Error: {}",
+                    objectName, BUCKET_NAME, e.getMessage());
+            throw new IOException("Failed to delete media file from object storage.", e);
+        }
     }
 
     private void ensureBucketExists() {
