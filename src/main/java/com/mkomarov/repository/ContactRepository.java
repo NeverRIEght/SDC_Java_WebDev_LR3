@@ -2,12 +2,6 @@ package com.mkomarov.repository;
 
 import com.mkomarov.data.DatabaseProvider;
 import com.mkomarov.entity.ContactEntity;
-import com.mkomarov.entity.MediafileEntity;
-import com.mkomarov.entity.UserEntity;
-import com.mkomarov.service.MediafileService;
-import com.mkomarov.service.UserService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -15,10 +9,6 @@ import java.util.List;
 import java.util.Optional;
 
 public final class ContactRepository extends AbstractRepository<ContactEntity> {
-    private static final Logger log = LoggerFactory.getLogger(ContactRepository.class);
-
-    private final UserService userService = new UserService();
-    private final MediafileService mediafileService = new MediafileService();
 
     public ContactRepository(String tableName) {
         super(tableName);
@@ -42,7 +32,7 @@ public final class ContactRepository extends AbstractRepository<ContactEntity> {
         return result;
     }
 
-    public List<ContactEntity> getAllByOwnerId(Long ownerId) {
+    public List<ContactEntity> getAllByUserId(Long ownerId) {
         List<ContactEntity> result = new ArrayList<>();
         String sql = "SELECT id, user_id, name, surname, phone_number, mediafile_id FROM "
                 + tableName + " WHERE user_id = ?";
@@ -83,19 +73,13 @@ public final class ContactRepository extends AbstractRepository<ContactEntity> {
 
     @Override
     public ContactEntity create(ContactEntity entityToCreate) {
-        String sql = "INSERT INTO " + tableName + " (user_id, name, surname, phone_number, mediafile_id) VALUES (?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO " + tableName + " (user_id, name, surname, phone_number) VALUES (?, ?, ?, ?)";
         try (Connection conn = DatabaseProvider.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setLong(1, entityToCreate.getOwner().getId());
+            ps.setLong(1, entityToCreate.getUserId());
             ps.setString(2, entityToCreate.getName());
             ps.setString(3, entityToCreate.getSurname());
             ps.setString(4, entityToCreate.getPhoneNumber());
-
-            if (entityToCreate.getMediafile() == null) {
-                ps.setNull(5, java.sql.Types.BIGINT);
-            } else {
-                ps.setLong(5, entityToCreate.getMediafile().getId());
-            }
 
             int affected = ps.executeUpdate();
             if (affected == 0) {
@@ -122,13 +106,14 @@ public final class ContactRepository extends AbstractRepository<ContactEntity> {
             ps.setString(1, updatedEntity.getName());
             ps.setString(2, updatedEntity.getSurname());
             ps.setString(3, updatedEntity.getPhoneNumber());
-            ps.setLong(4, updatedEntity.getId());
 
-            if (updatedEntity.getMediafile() == null) {
-                ps.setNull(5, java.sql.Types.BIGINT);
+            if (updatedEntity.getMediafileId() == null) {
+                ps.setNull(4, java.sql.Types.BIGINT);
             } else {
-                ps.setLong(5, updatedEntity.getMediafile().getId());
+                ps.setLong(4, updatedEntity.getMediafileId());
             }
+
+            ps.setLong(5, updatedEntity.getId());
 
             int affected = ps.executeUpdate();
             if (affected == 0) {
@@ -157,25 +142,13 @@ public final class ContactRepository extends AbstractRepository<ContactEntity> {
     }
 
     protected ContactEntity mapRow(ResultSet rs) throws SQLException {
-        ContactEntity contact = new ContactEntity();
-        contact.setId(rs.getLong("id"));
-
-        long ownerId = rs.getLong("user_id");
-
-        UserEntity owner = userService.getUserById(ownerId).orElseThrow(() ->
-                new RuntimeException("Owner with ID " + ownerId + " not found"));
-
-        contact.setOwner(owner);
-        contact.setName(rs.getString("name"));
-        contact.setSurname(rs.getString("surname"));
-        contact.setPhoneNumber(rs.getString("phone_number"));
-
-        long mediafileId = rs.getLong("mediafile_id");
-
-        MediafileEntity mediafile = mediafileService.getById(mediafileId).orElse(null);
-        contact.setMediafile(mediafile);
-
-        return contact;
+        return ContactEntity.builder()
+                .id(rs.getLong("id"))
+                .userId(rs.getLong("user_id"))
+                .name(rs.getString("name"))
+                .surname(rs.getString("surname"))
+                .phoneNumber(rs.getString("phone_number"))
+                .mediafileId(rs.getObject("mediafile_id", Long.class))
+                .build();
     }
 }
-

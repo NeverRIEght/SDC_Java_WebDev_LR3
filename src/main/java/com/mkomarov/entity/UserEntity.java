@@ -1,6 +1,7 @@
 package com.mkomarov.entity;
 
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
@@ -8,7 +9,7 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class UserEntity extends AbstractEntity {
     private String email;
     private String passwordHash;

@@ -1,12 +1,12 @@
 package com.mkomarov.service;
 
-import com.mkomarov.dto.ContactDto;
 import com.mkomarov.dto.MediafileDto;
 import com.mkomarov.entity.ContactEntity;
 import com.mkomarov.entity.MediafileEntity;
 import com.mkomarov.entity.UserEntity;
 import com.mkomarov.repository.MediafileRepository;
 import com.mkomarov.utils.HashingService;
+import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,17 +18,17 @@ import java.util.Optional;
 public class MediafileService {
     private static final Logger log = LoggerFactory.getLogger(MediafileService.class);
 
+    private final MediafileRepository mediafileRepository;
+
+    private final UserService userService;
+    @Setter
+    private ContactService contactService;
     private final ObjectStorageService objectStorageService;
 
-    private final MediafileRepository mediafileRepository;
-    private final UserService userService;
-    private final ContactService contactService;
-
-    public MediafileService() {
+    public MediafileService(UserService userService, ObjectStorageService objectStorageService) {
         this.mediafileRepository = new MediafileRepository("mediafiles");
-        this.userService = new UserService();
-        this.contactService = new ContactService();
-        this.objectStorageService = new ObjectStorageService();
+        this.userService = userService;
+        this.objectStorageService = objectStorageService;
     }
 
     public List<MediafileEntity> getAllByUserEmail(String userEmail) {
@@ -55,67 +55,59 @@ public class MediafileService {
             throw new IllegalArgumentException("Associated contact ID must be provided.");
         }
 
-        Optional<ContactEntity> associatedContact = contactService.getContactById(associatedContactId);
+        Optional<ContactEntity> associatedContact = contactService.getContactById(
+                request.getOwnerEmail(),
+                associatedContactId
+        );
+
         if (associatedContact.isEmpty()) {
             throw new IllegalArgumentException("Invalid associated contact with ID: " + associatedContactId);
         }
         ContactEntity contact = associatedContact.get();
 
-        if (!(contact.getOwner().getId() == owner.get().getId())) {
+        if (!(contact.getUserId() == owner.get().getId())) {
             throw new IllegalArgumentException("Invalid associated contact with ID: " + associatedContactId);
         }
 
         MediafileEntity mediafileEntity = new MediafileEntity();
         mediafileEntity.setFileName(request.getFilename());
 
-        contact.setMediafile(mediafileEntity);
-        try {
-            contactService.updateContact(ContactDto.builder()
-                    .id(contact.getId())
-                    .ownerEmail(request.getOwnerEmail())
-                    .name(contact.getName())
-                    .surname(contact.getSurname())
-                    .phoneNumber(contact.getPhoneNumber())
-                    .build()
-            );
-        } catch (IllegalArgumentException e) {
-            log.error("Error associating mediafile with contact: {}", e.getMessage());
-            throw new RuntimeException("Error associating mediafile with contact.");
-        }
-
-        String hash;
         try (ByteArrayInputStream hashStream = new ByteArrayInputStream(request.getFileData())) {
-            hash = HashingService.calculateSha256(hashStream);
+            String hash = HashingService.calculateSha256(hashStream);
+            mediafileEntity.setHash(hash);
         } catch (IOException e) {
             log.error("Error calculating hash for mediafile: {}", e.getMessage());
             throw new RuntimeException("Error processing mediafile data.");
         }
 
-        mediafileEntity.setHash(hash);
-        MediafileEntity entity = mediafileRepository.create(mediafileEntity);
+        mediafileEntity = mediafileRepository.create(mediafileEntity);
+        long mediafileId = mediafileEntity.getId();
+        request.setId(mediafileId);
 
-        long id = entity.getId();
-        request.setId(id);
+
+        try {
+            contactService.addMediafileToContact(mediafileId, contact.getId());
+        } catch (IllegalArgumentException e) {
+            log.error("Error associating mediafile with contact: {}", e.getMessage());
+            log.info("Rolling back mediafile creation with id {}.", mediafileId);
+            mediafileRepository.delete(mediafileId);
+            throw new RuntimeException("Error associating mediafile with contact.");
+        }
 
         try {
             objectStorageService.uploadMediaFile(request);
-            log.info("Mediafile with id {} uploaded to object storage.", id);
+            log.info("Mediafile with id {} uploaded to object storage.", mediafileId);
         } catch (Exception e) {
             log.error("Error uploading mediafile to object storage: {}", e.getMessage());
-            mediafileRepository.delete(id);
+            log.info("Rolling back mediafile association with contact for mediafile id {}.", mediafileId);
+            contactService.removeMediafileFromContact(contact.getId());
+            log.info("Rolling back mediafile creation with id {}.", mediafileId);
+            mediafileRepository.delete(mediafileId);
             throw new RuntimeException("Error uploading mediafile.");
         }
     }
 
-    public void getMediafilesByContactId(long contactId) {
-        mediafileRepository.getAllByOwnerId(contactId);
-    }
-
     public void deleteById(long id) {
         mediafileRepository.delete(id);
-    }
-
-    private boolean validateMediafileDto(MediafileDto request) {
-        return true;
     }
 }

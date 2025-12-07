@@ -1,6 +1,6 @@
 package com.mkomarov.data;
 
-import com.mkomarov.config.config.ObjectStorageProperties;
+import com.mkomarov.config.ObjectStorageProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;

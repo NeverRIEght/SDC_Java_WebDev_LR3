@@ -125,10 +125,10 @@ public final class UserRepository extends AbstractRepository<UserEntity> {
     }
 
     protected UserEntity mapRow(ResultSet rs) throws SQLException {
-        UserEntity user = new UserEntity();
-        user.setId(rs.getLong("id"));
-        user.setEmail(rs.getString("email"));
-        user.setPasswordHash(rs.getString("password_hash"));
-        return user;
+        return UserEntity.builder()
+                .id(rs.getLong("id"))
+                .email(rs.getString("email"))
+                .passwordHash(rs.getString("password_hash"))
+                .build();
     }
 }

@@ -2,8 +2,6 @@ package com.mkomarov.repository;
 
 import com.mkomarov.data.DatabaseProvider;
 import com.mkomarov.entity.MediafileEntity;
-import com.mkomarov.entity.UserEntity;
-import com.mkomarov.service.UserService;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -11,7 +9,6 @@ import java.util.List;
 import java.util.Optional;
 
 public class MediafileRepository extends AbstractRepository<MediafileEntity> {
-    private static final UserService userService = new UserService();
 
     public MediafileRepository(String tableName) {
         super(tableName);
@@ -157,10 +154,10 @@ public class MediafileRepository extends AbstractRepository<MediafileEntity> {
     }
 
     protected MediafileEntity mapRow(ResultSet rs) throws SQLException {
-        MediafileEntity entity = new MediafileEntity();
-        entity.setId(rs.getLong("id"));
-        entity.setFileName(rs.getString("filename"));
-        entity.setHash(rs.getString("hash"));
-        return entity;
+        return MediafileEntity.builder()
+                .id(rs.getLong("id"))
+                .fileName(rs.getString("filename"))
+                .hash(rs.getString("hash"))
+                .build();
     }
 }

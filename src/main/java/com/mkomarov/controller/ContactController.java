@@ -1,9 +1,10 @@
 package com.mkomarov.controller;
 
-import com.mkomarov.utils.AuthUtils;
+import com.mkomarov.config.ServiceRegistry;
 import com.mkomarov.dto.ContactDto;
 import com.mkomarov.entity.ContactEntity;
 import com.mkomarov.service.ContactService;
+import com.mkomarov.utils.AuthUtils;
 import com.mkomarov.utils.ErrorMessages;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -19,14 +20,14 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 
-import static com.mkomarov.utils.ApiConstants.*;
+import static com.mkomarov.utils.ApiConstants.ERROR_JSON;
 import static com.mkomarov.utils.ApiUtils.*;
 
 @WebServlet("/api/contacts/*")
 public class ContactController extends HttpServlet {
     private static final Logger log = LoggerFactory.getLogger(ContactController.class);
 
-    private static final ContactService contactService = new ContactService();
+    private static final ContactService contactService = ServiceRegistry.CONTACT_SERVICE;
     private final ObjectMapper jsonToObjectMapper = new ObjectMapper();
 
     @Override
@@ -39,7 +40,7 @@ public class ContactController extends HttpServlet {
         if (pathInfo == null || pathInfo.equals("/")) {
             handleGetAll(req, resp);
         } else {
-            handleGet(pathInfo, resp);
+            handleGet(pathInfo, req, resp);
         }
     }
 
@@ -49,7 +50,6 @@ public class ContactController extends HttpServlet {
         String ownerEmail = (String) req.getAttribute(AuthUtils.USER_EMAIL_ATTRIBUTE);
 
         List<ContactEntity> contacts = contactService.getAllContacts(ownerEmail);
-        contacts.forEach(contact -> contact.getOwner().setPasswordHash(null));
         setJsonResponseType(resp);
         String responseJson = jsonToObjectMapper.writeValueAsString(contacts);
 
@@ -63,14 +63,16 @@ public class ContactController extends HttpServlet {
         resp.setStatus(HttpServletResponse.SC_OK);
     }
 
-    private void handleGet(String pathInfo, HttpServletResponse resp) {
+    private void handleGet(String pathInfo, HttpServletRequest req, HttpServletResponse resp) {
         String idStr = pathInfo.replace("/", "");
 
+        String ownerEmail = (String) req.getAttribute(AuthUtils.USER_EMAIL_ATTRIBUTE);
+
         try {
-            int id = Integer.parseInt(idStr);
+            long id = Long.parseLong(idStr);
             log.info("Dispatching GET request to: getSpecific, id: {}", id);
 
-            Optional<ContactEntity> foundEntity = contactService.getContactById(id);
+            Optional<ContactEntity> foundEntity = contactService.getContactById(ownerEmail, id);
 
             if (foundEntity.isEmpty()) {
                 resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
@@ -81,7 +83,6 @@ public class ContactController extends HttpServlet {
             setJsonResponseType(resp);
 
             ContactEntity contact = foundEntity.get();
-            contact.setOwner(null);
             String contactJson = jsonToObjectMapper.writeValueAsString(contact);
             resp.getWriter().write(contactJson);
 
@@ -109,19 +110,19 @@ public class ContactController extends HttpServlet {
 
         String ownerEmail = (String) req.getAttribute(AuthUtils.USER_EMAIL_ATTRIBUTE);
 
-        ContactDto contactDto = new ContactDto(
-                null,
-                ownerEmail,
-                name,
-                surname,
-                phoneNumber
-        );
+
+        ContactDto contactDto = ContactDto.builder()
+                .id(null)
+                .ownerEmail(ownerEmail)
+                .name(name)
+                .surname(surname)
+                .phoneNumber(phoneNumber)
+                .build();
 
         try {
             contactService.createContact(contactDto);
 
             List<ContactEntity> contacts = contactService.getAllContacts(ownerEmail);
-            contacts.forEach(contact -> contact.getOwner().setPasswordHash(null));
             String responseJson = jsonToObjectMapper.writeValueAsString(contacts);
             setJsonResponseType(resp);
             resp.getWriter().write(responseJson);
@@ -185,13 +186,13 @@ public class ContactController extends HttpServlet {
 
         String ownerEmail = (String) req.getAttribute(AuthUtils.USER_EMAIL_ATTRIBUTE);
 
-        ContactDto contactDto = new ContactDto(
-                pathId.get(),
-                ownerEmail,
-                name,
-                surname,
-                phoneNumber
-        );
+        ContactDto contactDto = ContactDto.builder()
+                .id(pathId.get())
+                .ownerEmail(ownerEmail)
+                .name(name)
+                .surname(surname)
+                .phoneNumber(phoneNumber)
+                .build();
 
         try {
             contactService.updateContact(contactDto);

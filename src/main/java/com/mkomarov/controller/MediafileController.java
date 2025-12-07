@@ -1,20 +1,20 @@
 package com.mkomarov.controller;
 
+import com.mkomarov.config.ServiceRegistry;
 import com.mkomarov.dto.MediafileDto;
 import com.mkomarov.entity.MediafileEntity;
 import com.mkomarov.service.MediafileService;
 import com.mkomarov.utils.AuthUtils;
 import com.mkomarov.utils.ErrorMessages;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.fileupload2.core.DiskFileItem;
+import org.apache.commons.fileupload2.jakarta.servlet6.JakartaServletFileUpload;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tools.jackson.databind.ObjectMapper;
-import org.apache.commons.fileupload2.jakarta.servlet6.JakartaServletFileUpload;
 
 import java.io.IOException;
 import java.util.List;
@@ -29,7 +29,7 @@ public class MediafileController extends HttpServlet {
 
     private final ObjectMapper jsonToObjectMapper = new ObjectMapper();
 
-    private final MediafileService mediafileService = new MediafileService();
+    private final MediafileService mediafileService = ServiceRegistry.MEDIAFILE_SERVICE;
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) {

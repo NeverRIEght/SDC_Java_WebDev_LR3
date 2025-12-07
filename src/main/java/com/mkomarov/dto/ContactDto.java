@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class ContactDto {
     private Long id;
+    private Long associatedMediafileId;
     private String ownerEmail;
     private String name;
     private String surname;

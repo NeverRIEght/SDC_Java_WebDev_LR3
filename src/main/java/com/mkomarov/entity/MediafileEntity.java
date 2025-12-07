@@ -1,6 +1,7 @@
 package com.mkomarov.entity;
 
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
@@ -8,7 +9,7 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class MediafileEntity extends AbstractEntity {
     private String fileName;
     private String hash;

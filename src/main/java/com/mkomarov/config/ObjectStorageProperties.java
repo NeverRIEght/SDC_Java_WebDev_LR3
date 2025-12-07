@@ -1,4 +1,4 @@
-package com.mkomarov.config.config;
+package com.mkomarov.config;
 
 public final class ObjectStorageProperties {
     public static final String REGION = System.getenv("OBJECT_STORAGE_REGION");
