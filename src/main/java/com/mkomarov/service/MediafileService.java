@@ -1,5 +1,6 @@
 package com.mkomarov.service;
 
+import com.mkomarov.dto.MediafileDownloadDto;
 import com.mkomarov.dto.MediafileDto;
 import com.mkomarov.entity.ContactEntity;
 import com.mkomarov.entity.MediafileEntity;
@@ -112,7 +113,7 @@ public class MediafileService {
         }
     }
 
-    public void deleteById(long id) {
+    public void deleteByContactId(long id) {
         List<MediafileEntity> mediafiles = mediafileRepository.getAllByContactId(id);
         if (mediafiles.isEmpty()) {
             throw new IllegalArgumentException("No mediafiles associated with contact id: " + id);
@@ -139,5 +140,37 @@ public class MediafileService {
 
             mediafileRepository.delete(mediafileEntity.getId());
         });
+    }
+
+    public MediafileDownloadDto downloadMediafile(String userEmail, long id) {
+        Optional<ContactEntity> associatedContact = contactService.getContactById(userEmail, id);
+        if (associatedContact.isEmpty()) {
+            throw new IllegalArgumentException("No contact associated with mediafile id: " + id);
+        }
+
+        List<MediafileEntity> existingMediafiles =mediafileRepository.getAllByContactId(
+                associatedContact.get().getId());
+
+        if (existingMediafiles.isEmpty()) {
+            throw new IllegalArgumentException("No mediafiles associated with contact id: " + id);
+        }
+
+        MediafileEntity mediafile = existingMediafiles.getFirst();
+
+        String originalFilename = mediafile.getFileName();
+        String fileExtension = "";
+        int dotIndex = originalFilename.lastIndexOf('.');
+        if (dotIndex > 0) {
+            fileExtension = originalFilename.substring(dotIndex);
+        }
+
+        String objectName = mediafile.getId() + fileExtension;
+
+        try {
+            return objectStorageService.downloadMediafile(objectName);
+        } catch (IOException e) {
+            log.error("Error downloading mediafile from object storage: {}", e.getMessage());
+            throw new RuntimeException("Error downloading mediafile.");
+        }
     }
 }

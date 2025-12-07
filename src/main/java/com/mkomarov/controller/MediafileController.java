@@ -1,11 +1,12 @@
 package com.mkomarov.controller;
 
 import com.mkomarov.config.ServiceRegistry;
+import com.mkomarov.dto.MediafileDownloadDto;
 import com.mkomarov.dto.MediafileDto;
-import com.mkomarov.entity.MediafileEntity;
 import com.mkomarov.service.MediafileService;
 import com.mkomarov.utils.AuthUtils;
 import com.mkomarov.utils.ErrorMessages;
+import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tools.jackson.databind.ObjectMapper;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
@@ -36,10 +38,8 @@ public class MediafileController extends HttpServlet {
         String pathInfo = req.getPathInfo();
         log.info("Received GET request: /api/mediafiles/*. PathInfo: {}", pathInfo);
 
-        setJsonResponseType(resp);
-
         if (pathInfo != null && !pathInfo.equals("/")) {
-            handleGet(pathInfo, resp);
+            handleGet(req, pathInfo, resp);
         } else {
             log.error("Invalid GET request path: {}", pathInfo);
             resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
@@ -52,37 +52,35 @@ public class MediafileController extends HttpServlet {
         }
     }
 
-    private void handleGet(String pathInfo, HttpServletResponse resp) {
+    private void handleGet(HttpServletRequest req, String pathInfo, HttpServletResponse resp) {
         Optional<Long> pathId = extractIdFromPath(pathInfo, resp);
         if (pathId.isEmpty()) {
             return;
         }
-
         long id = pathId.get();
 
         log.info("Dispatching GET request to: getSpecific, id: {}", id);
 
-        try {
-            Optional<MediafileEntity> foundEntity = mediafileService.getById(id);
+        String ownerEmail = (String) req.getAttribute(AuthUtils.USER_EMAIL_ATTRIBUTE);
 
-            if (foundEntity.isEmpty()) {
-                resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
-                resp.getWriter().write("Entity not found");
-                return;
+        try {
+            MediafileDownloadDto mediafile = mediafileService.downloadMediafile(ownerEmail, id);
+
+            resp.setContentType(mediafile.getContentType());
+            resp.setContentLengthLong(mediafile.getContentLength());
+
+
+            try (ServletOutputStream os = resp.getOutputStream()) {
+                os.write(mediafile.getFileData());
+                os.flush();
             }
 
-            setJsonResponseType(resp);
-
-            MediafileEntity entity = foundEntity.get();
-            String jsonResponseString = jsonToObjectMapper.writeValueAsString(entity);
-            resp.getWriter().write(jsonResponseString);
-
             resp.setStatus(HttpServletResponse.SC_OK);
-        } catch (NumberFormatException _) {
-            log.error("Invalid id format: {}", id);
-            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        } catch (FileNotFoundException e) {
+            log.warn("File not found for download, id: {}", id);
+            resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
             try {
-                resp.getWriter().write("{\"error\": \"Invalid id format\"}");
+                resp.getWriter().write(ERROR_JSON + "File not found.\"}");
             } catch (IOException ex) {
                 log.error("{} {}", ErrorMessages.IOErrors.NETWORK_ERROR, ex);
             }
@@ -181,7 +179,7 @@ public class MediafileController extends HttpServlet {
         }
 
         try {
-            mediafileService.deleteById(pathId.get());
+            mediafileService.deleteByContactId(pathId.get());
             resp.setStatus(HttpServletResponse.SC_OK);
         } catch (IllegalArgumentException e) {
             log.error("Error deleting entity: {}", e.getMessage());

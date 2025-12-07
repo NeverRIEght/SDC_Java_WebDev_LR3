@@ -1,14 +1,17 @@
 package com.mkomarov.service;
 
 import com.mkomarov.data.ObjectStorageProvider;
+import com.mkomarov.dto.MediafileDownloadDto;
 import com.mkomarov.dto.MediafileDto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 
 import java.io.ByteArrayInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 
 public class ObjectStorageService {
@@ -72,6 +75,42 @@ public class ObjectStorageService {
             log.error("Failed to delete media file '{}' from bucket '{}'. Error: {}",
                     objectName, BUCKET_NAME, e.getMessage());
             throw new IOException("Failed to delete media file from object storage.", e);
+        }
+    }
+
+    public MediafileDownloadDto downloadMediafile(String objectName) throws IOException {
+        log.info("Downloading media file from S3 bucket: {}/{}", BUCKET_NAME, objectName);
+
+        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                .bucket(BUCKET_NAME)
+                .key(objectName)
+                .build();
+
+        try {
+            ResponseBytes<GetObjectResponse> responseBytes =
+                    objectStorageClient.getObjectAsBytes(getObjectRequest);
+
+            byte[] fileData = responseBytes.asByteArray();
+            GetObjectResponse response = responseBytes.response();
+
+            MediafileDownloadDto result = new MediafileDownloadDto(
+                    fileData,
+                    response.contentType(),
+                    response.contentLength()
+            );
+
+            log.info("Successfully retrieved file '{}'. Content-Type: {}",
+                    objectName, result.getContentType());
+
+            return result;
+
+        } catch (NoSuchKeyException e) {
+            log.warn("Media file not found in S3: {}/{}", BUCKET_NAME, objectName);
+            throw new FileNotFoundException("File not found in S3 storage.");
+        } catch (S3Exception e) {
+            log.error("Failed to download media file '{}' from S3. Error: {}",
+                    objectName, e.getMessage());
+            throw new IOException("Failed to retrieve media file from object storage.", e);
         }
     }
 
