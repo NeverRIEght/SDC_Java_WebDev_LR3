@@ -120,6 +120,57 @@
             display: block;
         }
 
+        .contact-image {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 15px;
+            border: 2px solid #ddd;
+        }
+
+        .contact-image.placeholder {
+            background-color: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .contact-display {
+            display: flex;
+            align-items: center;
+            flex: 1;
+        }
+
+        .photo-actions {
+            margin-top: 10px;
+        }
+
+        .photo-btn {
+            background-color: #ff9800;
+            font-size: 12px;
+            padding: 5px 10px;
+        }
+
+        .photo-btn:hover {
+            background-color: #e68900;
+        }
+
+        .delete-photo-btn {
+            background-color: #9c27b0;
+        }
+
+        .delete-photo-btn:hover {
+            background-color: #7b1fa2;
+        }
+
+        .photo-upload {
+            display: none;
+        }
+
         .error {
             color: red;
             font-size: 14px;
@@ -229,11 +280,37 @@
             const name = contact.name;
             const surname = contact.surname;
             const phoneNumber = contact.phoneNumber;
-
+            const mediafileId = contact.mediafileId;
 
             const contactElement = document.createElement('div');
             contactElement.className = 'contact-item';
             contactElement.id = id;
+
+            // Create contact display container
+            const contactDisplay = document.createElement('div');
+            contactDisplay.className = 'contact-display';
+
+            // Create image element
+            const imageElement = document.createElement('div');
+            imageElement.className = 'contact-image';
+
+            if (mediafileId) {
+                const img = document.createElement('img');
+                // Add cache-busting parameter to force browser to reload updated images
+                img.src = '/api/mediafiles/' + id + '?t=' + Date.now();
+                img.className = 'contact-image';
+                img.alt = name + ' ' + surname;
+                img.onerror = function() {
+                    // If image fails to load, show placeholder
+                    this.style.display = 'none';
+                    imageElement.className = 'contact-image placeholder';
+                    imageElement.textContent = 'No Image';
+                };
+                imageElement.appendChild(img);
+            } else {
+                imageElement.className = 'contact-image placeholder';
+                imageElement.textContent = 'No Image';
+            }
 
             const nameDiv = document.createElement("div");
             nameDiv.className = "name-field";
@@ -256,6 +333,39 @@
             info.appendChild(surnameDiv);
             info.appendChild(phoneDiv);
 
+            // Add photo management buttons
+            const photoActions = document.createElement("div");
+            photoActions.className = "photo-actions";
+
+            const photoUploadInput = document.createElement("input");
+            photoUploadInput.type = "file";
+            photoUploadInput.accept = "image/*";
+            photoUploadInput.className = "photo-upload";
+            photoUploadInput.id = 'upload-' + id;
+            photoUploadInput.addEventListener("change", (e) => uploadPhoto(id, e.target.files[0], !!mediafileId));
+
+            const updatePhotoBtn = document.createElement("button");
+            updatePhotoBtn.className = "photo-btn";
+            updatePhotoBtn.textContent = mediafileId ? "Update Photo" : "Add Photo";
+            updatePhotoBtn.addEventListener("click", () => {
+                photoUploadInput.click();
+            });
+
+            const deletePhotoBtn = document.createElement("button");
+            deletePhotoBtn.className = "photo-btn delete-photo-btn";
+            deletePhotoBtn.textContent = "Delete Photo";
+            deletePhotoBtn.style.display = mediafileId ? "inline-block" : "none";
+            deletePhotoBtn.addEventListener("click", () => deletePhoto(id));
+
+            photoActions.appendChild(photoUploadInput);
+            photoActions.appendChild(updatePhotoBtn);
+            photoActions.appendChild(deletePhotoBtn);
+
+            info.appendChild(photoActions);
+
+            contactDisplay.appendChild(imageElement);
+            contactDisplay.appendChild(info);
+
             const actions = document.createElement("div");
             actions.className = "contact-actions";
 
@@ -272,7 +382,7 @@
             actions.appendChild(updateBtn);
             actions.appendChild(deleteBtn);
 
-            contactElement.appendChild(info);
+            contactElement.appendChild(contactDisplay);
             contactElement.appendChild(actions);
 
             contactListElement.appendChild(contactElement);
@@ -413,6 +523,102 @@
         } catch (error) {
             console.error("Network error during add contact:", error);
             showError("A network error occurred while adding the contact.");
+        }
+    }
+
+    async function uploadPhoto(contactId, file, isUpdate = false) {
+        if (!file) {
+            showError("Please select a file to upload.");
+            return;
+        }
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            showError("Please select an image file.");
+            return;
+        }
+
+        // Validate file size (e.g., max 5MB)
+        const maxSizeInBytes = 5 * 1024 * 1024; // 5MB
+        if (file.size > maxSizeInBytes) {
+            showError("File size must be less than 5MB.");
+            return;
+        }
+
+        const url = '/api/mediafiles/' + contactId;
+
+        try {
+            // If this is an update (contact already has a photo), delete the existing one first
+            if (isUpdate) {
+                console.log('Deleting existing photo for contact ID ' + contactId + ' before uploading new one...');
+                const deleteResponse = await fetch(url, {
+                    method: 'DELETE'
+                });
+
+                if (!deleteResponse.ok) {
+                    const errorBody = await deleteResponse.text();
+                    let errorDetails = 'Failed to delete existing photo! Status: ' + deleteResponse.status + '. Body: ' + errorBody;
+                    console.error("Photo delete error during update:", errorDetails);
+                    showError(errorDetails);
+                    return;
+                }
+                console.log('Existing photo deleted successfully.');
+            }
+
+            // Now upload the new photo
+            const formData = new FormData();
+            formData.append('mediaFile', file);
+
+            const uploadResponse = await fetch(url, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!uploadResponse.ok) {
+                const errorBody = await uploadResponse.text();
+                let errorDetails = 'Photo upload failed! Status: ' + uploadResponse.status + '. Body: ' + errorBody;
+                console.error("Photo upload error:", errorDetails);
+                showError(errorDetails);
+                return;
+            }
+
+            console.log('Photo uploaded successfully for contact ID ' + contactId);
+
+            // Refresh the contacts list to show the new image
+            await updateContacts();
+        } catch (error) {
+            console.error("Network error during photo upload:", error);
+            showError("A network error occurred while uploading the photo.");
+        }
+    }
+
+    async function deletePhoto(contactId) {
+        if (!confirm("Are you sure you want to delete this photo?")) {
+            return;
+        }
+
+        const url = '/api/mediafiles/' + contactId;
+
+        try {
+            const response = await fetch(url, {
+                method: 'DELETE'
+            });
+
+            if (!response.ok) {
+                const errorBody = await response.text();
+                let errorDetails = 'Photo delete failed! Status: ' + response.status + '. Body: ' + errorBody;
+                console.error("Photo delete error:", errorDetails);
+                showError(errorDetails);
+                return;
+            }
+
+            console.log('Photo deleted successfully for contact ID ' + contactId);
+
+            // Refresh the contacts list to remove the image
+            await updateContacts();
+        } catch (error) {
+            console.error("Network error during photo delete:", error);
+            showError("A network error occurred while deleting the photo.");
         }
     }
 
