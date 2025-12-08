@@ -83,10 +83,12 @@ public class ContactService {
 
         validateContactDto(request);
 
-        Long mediafileId = request.getAssociatedMediafileId();
-        Optional<MediafileEntity> mediafileOpt = mediafileService.getById(mediafileId);
-        if (mediafileOpt.isEmpty()) {
-            throw new IllegalArgumentException("Mediafile with ID " + mediafileId + " does not exist.");
+        Long mediafileId = existingContact.get().getMediafileId();
+        if (mediafileId != null) {
+            Optional<MediafileEntity> mediafileOpt = mediafileService.getById(mediafileId);
+            if (mediafileOpt.isEmpty()) {
+                throw new IllegalArgumentException("Mediafile with ID " + mediafileId + " does not exist.");
+            }
         }
 
         ContactEntity updatedContact = ContactEntity.builder()
@@ -95,7 +97,7 @@ public class ContactService {
                 .name(request.getName())
                 .surname(request.getSurname())
                 .phoneNumber(request.getPhoneNumber())
-                .mediafileId(request.getAssociatedMediafileId())
+                .mediafileId(mediafileId)
                 .build();
 
 
