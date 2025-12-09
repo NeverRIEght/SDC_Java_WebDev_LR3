@@ -286,11 +286,9 @@
             contactElement.className = 'contact-item';
             contactElement.id = id;
 
-            // Create contact display container
             const contactDisplay = document.createElement('div');
             contactDisplay.className = 'contact-display';
 
-            // Create image element
             const imageElement = document.createElement('div');
             imageElement.className = 'contact-image';
 
@@ -333,7 +331,6 @@
             info.appendChild(surnameDiv);
             info.appendChild(phoneDiv);
 
-            // Add photo management buttons
             const photoActions = document.createElement("div");
             photoActions.className = "photo-actions";
 
@@ -532,13 +529,11 @@
             return;
         }
 
-        // Validate file type
         if (!file.type.startsWith('image/')) {
             showError("Please select an image file.");
             return;
         }
 
-        // Validate file size (e.g., max 5MB)
         const maxSizeInBytes = 5 * 1024 * 1024; // 5MB
         if (file.size > maxSizeInBytes) {
             showError("File size must be less than 5MB.");
@@ -548,7 +543,6 @@
         const url = '/api/mediafiles/' + contactId;
 
         try {
-            // If this is an update (contact already has a photo), delete the existing one first
             if (isUpdate) {
                 console.log('Deleting existing photo for contact ID ' + contactId + ' before uploading new one...');
                 const deleteResponse = await fetch(url, {
@@ -565,7 +559,6 @@
                 console.log('Existing photo deleted successfully.');
             }
 
-            // Now upload the new photo
             const formData = new FormData();
             formData.append('mediaFile', file);
 
@@ -584,7 +577,6 @@
 
             console.log('Photo uploaded successfully for contact ID ' + contactId);
 
-            // Refresh the contacts list to show the new image
             await updateContacts();
         } catch (error) {
             console.error("Network error during photo upload:", error);
@@ -614,7 +606,6 @@
 
             console.log('Photo deleted successfully for contact ID ' + contactId);
 
-            // Refresh the contacts list to remove the image
             await updateContacts();
         } catch (error) {
             console.error("Network error during photo delete:", error);
